@@ -1,0 +1,14 @@
+[22:30:07] Static constructor running. Current state: WaitingForCompile, isPlaying: False
+[22:30:07] Scheduling Play Mode entry.
+[22:30:09] PlayMode state changed: ExitingEditMode
+[22:30:11] Static constructor running. Current state: Idle, isPlaying: False
+[22:30:14] Static constructor running. Current state: EnteringPlayMode, isPlaying: False
+[22:30:17] PlayMode state changed: EnteredPlayMode
+[22:30:18] Static constructor running. Current state: Idle, isPlaying: False
+[22:30:18] Static constructor running. Current state: Idle, isPlaying: False
+[22:30:18] Entering Setup().
+[22:30:18] Player positioned near Terminal.
+[22:30:19] Detonate method successfully invoked on PlanetBlaster!
+[22:30:27] Debris and rays verified as fully cleared.
+[22:30:28] Tick complete at elapsed: 9.559398. Timed out: False, Complete: True
+[22:30:28] FinishTest called. Result: {"success":true,"error":"","detonated":true,"planetMeshDisabled":true,"debrisFoundInBlast":true,"raysFoundInBlast":true,"raysScalingAndSpinning":true,"debrisRigidbodiesRemoved":true,"playerLaunched":true,"logs":["[Log] [PlanetBlaster] DETONATION COMMAND INITIATED. BRACE FOR IMPACT!","[Log] [PlanetBlaster] Mr.Blast launched into deep space with impulse force!","[Log] [PlanetBlaster] Spawned 24 volumetric light rays shooting out from core!","[Log] [PlanetBlaster] Settle phase complete. Disabling physics on all debris.","[Log] [PlanetBlaster] Planet detonation sequence fully complete. All debris and rays cleared."]}
