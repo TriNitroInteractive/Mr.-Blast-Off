@@ -116,6 +116,7 @@ public class GameManager : MonoBehaviour
             if (blaster != null)
             {
                 Debug.Log("[GameManager] Reaction CRITICALITY EXCEEDED! Initiating planetary destruction...");
+                StartCoroutine(TransitionToSecondaryCamera());
                 blaster.Detonate();
             }
             else
@@ -129,6 +130,54 @@ public class GameManager : MonoBehaviour
             Debug.LogWarning("[GameManager] Reaction UNDER-CRITICAL! Catastrophic backfire vaporizes Mr. Blast!");
             KillPlayer();
         }
+    }
+
+    private IEnumerator TransitionToSecondaryCamera()
+    {
+        GameObject secCam = GameObject.Find("SecondaryCamera");
+        if (secCam == null)
+        {
+            Debug.LogWarning("[GameManager] SecondaryCamera not found in scene! Camera transition bypassed.");
+            yield break;
+        }
+
+        var mainCam = Camera.main;
+        if (mainCam == null)
+        {
+            Debug.LogError("[GameManager] Main Camera not found in scene!");
+            yield break;
+        }
+
+        var followScript = mainCam.GetComponent<SphericalCameraFollow>();
+        if (followScript != null)
+        {
+            followScript.isCinematicActive = true;
+        }
+
+        Vector3 startPos = mainCam.transform.position;
+        Quaternion startRot = mainCam.transform.rotation;
+
+        Vector3 targetPos = secCam.transform.position;
+        Quaternion targetRot = secCam.transform.rotation;
+
+        float elapsed = 0f;
+        float duration = 2.0f; // Pacing: smoothly pan over 2.0 seconds during the 3.0s buildup
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            // Smoothstep curve for elegant acceleration and deceleration
+            float smoothT = t * t * (3f - 2f * t);
+
+            mainCam.transform.position = Vector3.Lerp(startPos, targetPos, smoothT);
+            mainCam.transform.rotation = Quaternion.Slerp(startRot, targetRot, smoothT);
+            yield return null;
+        }
+
+        mainCam.transform.position = targetPos;
+        mainCam.transform.rotation = targetRot;
+        Debug.Log("[GameManager] Cinematic camera transition to SecondaryCamera complete.");
     }
 
     private void KillPlayer()

@@ -20,6 +20,8 @@ public class SphericalCameraFollow : MonoBehaviour
     [SerializeField] private float positionLerpSpeed = 8f;
     [SerializeField] private float rotationLerpSpeed = 8f;
 
+    [HideInInspector] public bool isCinematicActive = false;
+
     private Quaternion virtualRotation;
     private InputAction lookAction;
 
@@ -71,6 +73,7 @@ public class SphericalCameraFollow : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (isCinematicActive) return;
         if (target == null || planet == null) return;
 
         // Calculate gravity direction at the player's position

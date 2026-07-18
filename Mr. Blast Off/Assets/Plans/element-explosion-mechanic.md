@@ -12,7 +12,7 @@
 ## Core Gameplay Loop
 1. **Element Selection**: Choose exactly 10 scientific/nuclear elements to load into the planet's core reactor.
 2. **Exploration & Navigation**: Mr. Blast walks around the planet, prepares the reactor, and interacts with the control terminal.
-3. **The Detonation (Kickoff)**: Pull the trigger at the terminal to initiate the reaction. If the elements are highly reactive (sum of reaction points > 80), the planet undergoes a spectacular cinematic explosion, completing the cleanup. If the reaction is insufficient (sum of reaction points <= 80), the reactor backfires and Mr. Blast is immediately vaporized (causing a Game Over).
+3. **The Detonation (Kickoff)**: Pull the trigger at the terminal to initiate the reaction. If the elements are highly reactive (sum of reaction points > 80), the planet undergoes a spectacular cinematic explosion, completing the cleanup. If the reaction is insufficient (sum of reaction points <= 80), the reactor backfires and Mr. Blast is immediately vaporized (causing a Game Over). During the detonation build-up, the Main Camera smoothly swings and shifts to a secondary static side-view camera to view the explosion/event in its full 2D glory.
 
 ## Controls and Input Methods
 - **WASD / Arrow Keys**: Move Mr. Blast around the spherical surface.
@@ -29,13 +29,19 @@ Since there is no pre-existing game-over UI, we will programmatically create a m
 5. **Prompt**: Flashing yellow instruction "Press [R] to Restart Cleanup".
 
 # Key Asset & Context
-1. **Assets/Scripts/GameManager.cs** (New):
+1. **Assets/Scripts/GameManager.cs** (Modified):
    - Co-ordinates the reaction checking, player death execution, procedural particle disintegration, and UI overlay.
    - Contains the static mapping of scientific elements to their reaction points (1-10 scale).
+   - Manages the smooth interpolation of the Main Camera to the Secondary side-view Camera when detonation is triggered.
 2. **Assets/Scripts/ElementSelectionManager.cs** (Modified):
    - Integrates with `GameManager` to hand over selected element list and calculate total points before starting the game.
 3. **Assets/Scripts/TerminalController.cs** (Modified):
    - Diverts the trigger detonation event to `GameManager.Instance.TryDetonate()` instead of directly detonating.
+4. **Assets/Scripts/SphericalCameraFollow.cs** (Modified):
+   - Supports a `isCinematicActive` flag which, when true, stops standard player following so that the GameManager can smoothly animate the camera to the secondary camera.
+5. **Secondary Camera GameObject** (New scene object):
+   - A physical camera named `SecondaryCamera` positioned at `(0.32, 0.22, -45.0f)` with rotation `(0, 0, 0)`.
+   - Perfectly frames the 30-unit diameter Planet M centered in its 2D side-view.
 
 ### Reactivity Point Mapping
 To make the gameplay highly thematic and strategic for player discovery, the 30 scientific elements are assigned the following hidden reaction points:
@@ -47,54 +53,35 @@ To make the gameplay highly thematic and strategic for player discovery, the 30 
   - Beryllium: 4, Xenon: 4, Krypton: 4, Graphite: 3, Copper: 3, Iron: 3, Boron: 2, Steel: 2, Lead: 1, Cadmium: 1
 
 # Implementation Steps
-## Step 1: Create GameManager Script
-- **Description**: Implement `Assets/Scripts/GameManager.cs` to manage points calculation, player death, and scene reloading.
+## Step 1: Create Secondary Camera in the Scene
+- **Description**: Add a new Camera GameObject named `SecondaryCamera` to `Kickoff.unity` scene. Disable its Camera and AudioListener components so they don't render/conflict at runtime, but can be referenced. Position it at `(0.32, 0.22, -45.0f)` with rotation `(0, 0, 0)`.
 - **Assigned role**: developer
 - **Dependencies**: None
-- **Parallelizable**: No
-
-## Step 2: Set Up GameManager GameObject in Scene
-- **Description**: Add an empty GameObject named `_GameManager` to `Kickoff.unity` scene, and attach the `GameManager` component to it.
-- **Assigned role**: developer
-- **Dependencies**: Step 1
-- **Parallelizable**: No
-
-## Step 3: Integrate with ElementSelectionManager
-- **Description**: Modify `OnStartClicked()` in `ElementSelectionManager.cs` to send selected elements to `GameManager.Instance.InitializeSelectedPoints()` and store the sum before unpausing.
-- **Assigned role**: developer
-- **Dependencies**: Step 1
 - **Parallelizable**: Yes
 
-## Step 4: Integrate with TerminalController
-- **Description**: Modify `TriggerDetonation()` in `TerminalController.cs` to call `GameManager.Instance.TryDetonate()` instead of detonating directly.
+## Step 2: Add `isCinematicActive` to SphericalCameraFollow
+- **Description**: Add a `public bool isCinematicActive = false;` flag to `SphericalCameraFollow.cs`. Return early in `LateUpdate()` when this flag is active.
 - **Assigned role**: developer
-- **Dependencies**: Step 1
+- **Dependencies**: None
 - **Parallelizable**: Yes
 
-## Step 5: Implement Player Death and Game Over UI
-- **Description**: Implement `KillPlayer()` inside `GameManager.cs`. It will:
-  1. Set `isGameOver = true`.
-  2. Disable the player's `SphericalCharacterController` to lock movement.
-  3. Hide the player's `MeshRenderer` to simulate body destruction.
-  4. Spawn 20 small cube primitives as debris at player's position, applying random forces/torques and fading/shrinking them over 2 seconds.
-  5. Programmatically build a "GAME OVER" screen on the scene's Canvas.
-  6. Listen for `R` key inside `Update()` to reload the scene.
+## Step 3: Implement Camera Swing in GameManager
+- **Description**: In `GameManager.cs`, implement a smooth coroutine that lerps the Main Camera to the `SecondaryCamera` position and rotation over 2.0 seconds using smoothstep interpolation. Trigger this transition immediately inside `TryDetonate()`.
 - **Assigned role**: developer
-- **Dependencies**: Step 1
+- **Dependencies**: Step 1, Step 2
+- **Parallelizable**: No
+
+## Step 4: Verify and Save Scene
+- **Description**: Save the scene changes and verify that the layout and components compile correctly with no errors.
+- **Assigned role**: developer
+- **Dependencies**: Step 1, Step 3
 - **Parallelizable**: No
 
 # Verification & Testing
-1. **Successful Detonation Test**:
-   - Select 10 high-reactivity elements (e.g. Uranium, Plutonium, Tritium, Helium-3, Deuterium, Thorium, Neptunium, Radium, Polonium, Cesium).
-   - Press Start. Verify that total point is > 80 (should be 91).
-   - Navigate to Terminal, press [F].
-   - Verify that planet detonates successfully and Mr. Blast is launched into space.
-2. **Vaporization Failure Test**:
-   - Select 10 low-reactivity elements (e.g. Lead, Cadmium, Boron, Steel, Graphite, Copper, Iron, Beryllium, Xenon, Carbon).
-   - Press Start. Verify that total point is <= 80 (should be 28).
-   - Navigate to Terminal, press [F].
-   - Verify that planet does NOT detonate.
-   - Verify that Mr. Blast is vaporized: movement freezes, player model turns into scattering debris, and a beautiful Game Over UI panel appears displaying: "CRITICAL FAILURE - Mr. Blast was vaporized! Total Reaction Points: 28/80".
-3. **Restart Test**:
-   - Press [R] on the Game Over screen.
-   - Verify that scene reloads immediately, re-entering the Element Selection phase.
+1. **Camera Swing and Detonation Test**:
+   - Start game, select high points, go to terminal and press F.
+   - Verify that the main camera smoothly swings around to the side of the planet, centering Planet M, before/during the massive cinematic explosion.
+2. **Camera Swing and Vaporization Test**:
+   - Start game, select low points, go to terminal and press F.
+   - Verify that the camera swings to the side view while Mr. Blast gets vaporized on the surface and the Game Over UI is displayed.
+
