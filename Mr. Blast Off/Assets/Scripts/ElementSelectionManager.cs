@@ -253,6 +253,16 @@ public class ElementSelectionManager : MonoBehaviour
 
             Debug.Log($"[ElementSelectionManager] Core elements stabilized: {string.Join(", ", SelectedElements)}");
 
+            // Register selected elements with the GameManager to compute reaction points
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.InitializeSelectedPoints(SelectedElements);
+            }
+            else
+            {
+                Debug.LogWarning("[ElementSelectionManager] GameManager.Instance is null! Reactivity calculation might be bypassed.");
+            }
+
             // Initialize and show the playtime Inventory Bar with selected elements
             InventoryBarManager invBar = Object.FindAnyObjectByType<InventoryBarManager>(FindObjectsInactive.Include);
             if (invBar != null)

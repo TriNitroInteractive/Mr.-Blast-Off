@@ -73,8 +73,7 @@ public class TerminalController : MonoBehaviour
 
     private void TriggerDetonation()
     {
-        PlanetBlaster blaster = Object.FindAnyObjectByType<PlanetBlaster>();
-        if (blaster != null)
+        if (GameManager.Instance != null)
         {
             hasTriggered = true;
             if (promptUI != null)
@@ -83,12 +82,29 @@ public class TerminalController : MonoBehaviour
             }
             showFallbackGUI = false;
             
-            Debug.Log("[TerminalController] Detonation code authorized. Activating PlanetBlaster!");
-            blaster.Detonate();
+            Debug.Log("[TerminalController] Detonation initiated! Querying GameManager for reactivity checks.");
+            GameManager.Instance.TryDetonate();
         }
         else
         {
-            Debug.LogError("[TerminalController] PlanetBlaster not found in scene! Cannot detonate.");
+            // Fallback to direct detonation if GameManager is missing
+            PlanetBlaster blaster = Object.FindAnyObjectByType<PlanetBlaster>();
+            if (blaster != null)
+            {
+                hasTriggered = true;
+                if (promptUI != null)
+                {
+                    promptUI.SetActive(false);
+                }
+                showFallbackGUI = false;
+                
+                Debug.LogWarning("[TerminalController] GameManager not found! Cascading to direct direct detonation.");
+                blaster.Detonate();
+            }
+            else
+            {
+                Debug.LogError("[TerminalController] PlanetBlaster and GameManager not found! Cannot detonate.");
+            }
         }
     }
 
