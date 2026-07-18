@@ -42,6 +42,12 @@ public class PlanetBlaster : MonoBehaviour
     public float maxLightIntensity = 150f;
     public float maxLightRange = 50f;
 
+    [Header("Cinematic Build-up Settings")]
+    [Tooltip("How long the pre-explosion build-up, rumble, and cracking lasts in seconds")]
+    public float buildUpDuration = 3f;
+    [Tooltip("Maximum intensity of planet vibration shake during rumble")]
+    public float shakeStrength = 0.25f;
+
     private bool isBlasted = false;
     private float planetRadius = 5.0f; // From planet scale / 2
 
@@ -112,43 +118,16 @@ public class PlanetBlaster : MonoBehaviour
 
         Debug.Log("[PlanetBlaster] DETONATION COMMAND INITIATED. BRACE FOR IMPACT!");
 
-        // 1. Disable the planet's visual and collider components
-        var renderer = GetComponent<MeshRenderer>();
-        if (renderer != null) renderer.enabled = false;
+        // Start the delayed multi-stage cinematic kickoff sequence
+        StartCoroutine(DetonationSequence());
+    }
 
-        var collider = GetComponent<Collider>();
-        if (collider != null) collider.enabled = false;
+    private IEnumerator DetonationSequence()
+    {
+        Vector3 originalPlanetPos = transform.position;
+        Vector3 originalPlanetScale = transform.localScale;
 
-        // 2. Locate and launch Mr.Blast
-        GameObject playerObj = GameObject.Find("Mr.Blast");
-        if (playerObj != null)
-        {
-            // Disable movement control so player floats freely under physics
-            var movementController = playerObj.GetComponent<SphericalCharacterController>();
-            if (movementController != null)
-            {
-                movementController.enabled = false;
-            }
-
-            var playerRb = playerObj.GetComponent<Rigidbody>();
-            if (playerRb != null)
-            {
-                // Remove rotation locking so Mr.Blast spins dramatically in 3D space
-                playerRb.freezeRotation = false;
-                playerRb.constraints = RigidbodyConstraints.None;
-
-                // Calculate outward direction
-                Vector3 launchDir = (playerObj.transform.position - transform.position).normalized;
-                
-                // Add sudden explosive blast impulse
-                playerRb.AddForce(launchDir * playerLaunchForce, ForceMode.Impulse);
-                playerRb.AddTorque(Random.insideUnitSphere * playerLaunchTorque, ForceMode.Impulse);
-                
-                Debug.Log("[PlanetBlaster] Mr.Blast launched into deep space with impulse force!");
-            }
-        }
-
-        // 3. Create Internal Light Source
+        // 1. Create Internal Light Source immediately (disabled / intensity 0 initially)
         GameObject lightGo = new GameObject("Blast_InnerLight");
         lightGo.transform.position = transform.position;
         Light innerLight = lightGo.AddComponent<Light>();
@@ -157,23 +136,7 @@ public class PlanetBlaster : MonoBehaviour
         innerLight.intensity = 0f;
         innerLight.range = 0f;
 
-        // 4. Create Expanding Fireball Core
-        GameObject fireball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        fireball.name = "Blast_Fireball";
-        fireball.transform.position = transform.position;
-        fireball.transform.localScale = Vector3.zero;
-        
-        // Remove collider from fireball to prevent physics collisions
-        var fireballCollider = fireball.GetComponent<Collider>();
-        if (fireballCollider != null) Destroy(fireballCollider);
-
-        var fireballRenderer = fireball.GetComponent<MeshRenderer>();
-        if (fireballRenderer != null && blastMaterial != null)
-        {
-            fireballRenderer.sharedMaterial = blastMaterial;
-        }
-
-        // 5. Generate Volumetric Light Rays (Rays released when blast happens!)
+        // 2. Spawn Volumetric Light Rays immediately (flat, but start extending slowly through cracks)
         GameObject rayContainer = new GameObject("Blast_Ray_Container");
         rayContainer.transform.position = transform.position;
 
@@ -201,13 +164,11 @@ public class PlanetBlaster : MonoBehaviour
             MeshRenderer rayRenderer = rayGo.AddComponent<MeshRenderer>();
             if (rayRenderer != null && rayMaterial != null)
             {
-                // Create unique material instance for dynamic fading
                 Material instantiatedMat = new Material(rayMaterial);
                 rayRenderer.sharedMaterial = instantiatedMat;
                 rayInstances.Add(instantiatedMat);
             }
 
-            // Start flat/small, animate scale later
             rayGo.transform.localScale = Vector3.zero;
 
             // Compute randomized target dimensions
@@ -215,24 +176,192 @@ public class PlanetBlaster : MonoBehaviour
             float thickness = rayThickness * Random.Range(0.6f, 1.4f);
             rayTargetScales.Add(new Vector3(thickness, length, thickness));
 
-            // Random rotation spin around local Y axis
             rayRotSpeeds.Add(Random.Range(-rayRotationSpeed, rayRotationSpeed));
             rayGameObjects.Add(rayGo);
         }
 
-        Debug.Log($"[PlanetBlaster] Spawned {numRays} volumetric light rays shooting out from core!");
-
-        // 6. Generate Debris (Both Outer Crust and Inner Burning Core)
+        // 3. Prepare Debris Containers
         GameObject debrisContainer = new GameObject("Planet_Debris_Container");
         debrisContainer.transform.position = transform.position;
 
         List<Rigidbody> debrisRigidbodies = new List<Rigidbody>();
         List<GameObject> debrisObjects = new List<GameObject>();
 
-        // Generate Outer Crust Debris (using Earth material)
-        for (int i = 0; i < numOuterDebris; i++)
+        // We will spawn a portion (e.g. 12 pieces) of the outer debris early to look like cracking/lifting off chunks
+        int numEarlyDebris = Mathf.Min(12, numOuterDebris);
+        int remainingOuterDebris = numOuterDebris - numEarlyDebris;
+
+        List<GameObject> earlyDebrisObjs = new List<GameObject>();
+        List<Rigidbody> earlyDebrisRbs = new List<Rigidbody>();
+
+        // Generate Early Cracking Debris
+        for (int i = 0; i < numEarlyDebris; i++)
         {
-            float y = 1f - (i / (float)(numOuterDebris - 1)) * 2f; 
+            float y = 1f - (i / (float)(numEarlyDebris - 1)) * 2f; 
+            float r = Mathf.Sqrt(1f - y * y); 
+            float goldenAngle = Mathf.PI * (3f - Mathf.Sqrt(5f));
+            float theta = goldenAngle * i;
+
+            Vector3 dir = new Vector3(Mathf.Cos(theta) * r, y, Mathf.Sin(theta) * r);
+            Vector3 spawnPos = transform.position + dir * planetRadius;
+
+            GameObject piece = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            piece.name = $"EarlyCrackingDebris_{i}";
+            piece.transform.position = spawnPos;
+            piece.transform.rotation = Random.rotation;
+            piece.transform.SetParent(debrisContainer.transform);
+
+            // Start very small or scale up during cracks
+            float size = Random.Range(0.5f, 1.0f);
+            piece.transform.localScale = Vector3.zero; // Scale up dynamically
+
+            var pieceRenderer = piece.GetComponent<MeshRenderer>();
+            if (pieceRenderer != null && earthMaterial != null)
+            {
+                pieceRenderer.sharedMaterial = earthMaterial;
+            }
+
+            // Set up a collider but disable initially to prevent player tripping over early cracking chunks
+            var col = piece.GetComponent<Collider>();
+            if (col != null) col.enabled = false;
+
+            earlyDebrisObjs.Add(piece);
+            debrisObjects.Add(piece);
+        }
+
+        // ==========================================
+        // STAGE 1: Pre-Explosion Rumble, Shaking, Cracking, Piercing Rays (Build-up Phase)
+        // ==========================================
+        Debug.Log("[PlanetBlaster] STAGE 1: INITIATING REACTION. CORE PRESSURE SWELLING...");
+        float buildUpElapsed = 0f;
+
+        while (buildUpElapsed < buildUpDuration)
+        {
+            buildUpElapsed += Time.deltaTime;
+            float t = buildUpElapsed / buildUpDuration;
+
+            // A. Rumble: Shake the planet, with increasing intensity (exponential back-weighted)
+            float currentShake = shakeStrength * (t * t);
+            transform.position = originalPlanetPos + Random.insideUnitSphere * currentShake;
+
+            // B. Pressure Pulsation: Let the planet expand slightly
+            transform.localScale = originalPlanetScale * (1f + 0.08f * (t * t));
+
+            // C. Light leak: Slowly swell the central light
+            if (innerLight != null)
+            {
+                innerLight.intensity = Mathf.Lerp(0f, maxLightIntensity * 0.25f, t);
+                innerLight.range = Mathf.Lerp(0f, maxLightRange * 0.5f, t);
+            }
+
+            // D. Piercing Rays: Volumetric light rays slowly stretch out through the cracking crust
+            for (int i = 0; i < rayGameObjects.Count; i++)
+            {
+                if (rayGameObjects[i] != null)
+                {
+                    // Grow to 30% length during buildup
+                    Vector3 partialScale = rayTargetScales[i] * Mathf.Lerp(0f, 0.35f, t);
+                    rayGameObjects[i].transform.localScale = partialScale;
+                    rayGameObjects[i].transform.Rotate(Vector3.up, rayRotSpeeds[i] * 0.3f * Time.deltaTime, Space.Self);
+                }
+            }
+
+            // E. Cracking Debris: Scale up early chunks and slowly lift them away from the surface
+            for (int i = 0; i < earlyDebrisObjs.Count; i++)
+            {
+                if (earlyDebrisObjs[i] != null)
+                {
+                    float size = Random.Range(0.5f, 1.0f);
+                    earlyDebrisObjs[i].transform.localScale = Vector3.Lerp(Vector3.zero, new Vector3(size, size, size), t);
+
+                    // Slowly drift outwards
+                    Vector3 dir = (earlyDebrisObjs[i].transform.position - transform.position).normalized;
+                    earlyDebrisObjs[i].transform.position += dir * (0.8f * Time.deltaTime);
+                    earlyDebrisObjs[i].transform.Rotate(Random.insideUnitSphere * 15f * Time.deltaTime);
+                }
+            }
+
+            yield return null;
+        }
+
+        // Restore original positions/scale before deactivating
+        transform.position = originalPlanetPos;
+        transform.localScale = originalPlanetScale;
+
+        // ==========================================
+        // STAGE 2: THE BIG BOOM! (Full vaporization, debris launch, fireball, player launch)
+        // ==========================================
+        Debug.Log("[PlanetBlaster] STAGE 2: MAXIMUM REACTOR CRITICALITY. DETONATION!");
+
+        // 1. Disable the planet's visual and collider components
+        var planetRenderer = GetComponent<MeshRenderer>();
+        if (planetRenderer != null) planetRenderer.enabled = false;
+
+        var planetCollider = GetComponent<Collider>();
+        if (planetCollider != null) planetCollider.enabled = false;
+
+        // 2. Locate and launch Mr.Blast
+        GameObject playerObj = GameObject.Find("Mr.Blast");
+        if (playerObj != null)
+        {
+            var movementController = playerObj.GetComponent<SphericalCharacterController>();
+            if (movementController != null)
+            {
+                movementController.enabled = false;
+            }
+
+            var playerRb = playerObj.GetComponent<Rigidbody>();
+            if (playerRb != null)
+            {
+                playerRb.freezeRotation = false;
+                playerRb.constraints = RigidbodyConstraints.None;
+
+                Vector3 launchDir = (playerObj.transform.position - transform.position).normalized;
+                playerRb.AddForce(launchDir * playerLaunchForce, ForceMode.Impulse);
+                playerRb.AddTorque(Random.insideUnitSphere * playerLaunchTorque, ForceMode.Impulse);
+                Debug.Log("[PlanetBlaster] Mr.Blast launched into deep space with impulse force!");
+            }
+        }
+
+        // 3. Create Expanding Fireball Core
+        GameObject fireball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        fireball.name = "Blast_Fireball";
+        fireball.transform.position = transform.position;
+        fireball.transform.localScale = Vector3.zero;
+        
+        var fireballCollider = fireball.GetComponent<Collider>();
+        if (fireballCollider != null) Destroy(fireballCollider);
+
+        var fireballRenderer = fireball.GetComponent<MeshRenderer>();
+        if (fireballRenderer != null && blastMaterial != null)
+        {
+            fireballRenderer.sharedMaterial = blastMaterial;
+        }
+
+        // 4. Activate Physics on early debris & blast them away violently
+        foreach (var piece in earlyDebrisObjs)
+        {
+            if (piece != null)
+            {
+                var col = piece.GetComponent<Collider>();
+                if (col != null) col.enabled = true;
+
+                Rigidbody rb = piece.AddComponent<Rigidbody>();
+                rb.useGravity = false;
+                rb.linearVelocity = Vector3.zero;
+
+                Vector3 dir = (piece.transform.position - transform.position).normalized;
+                rb.AddForce(dir * (explosionForce * Random.Range(1.2f, 1.8f)), ForceMode.Impulse);
+                rb.AddTorque(Random.insideUnitSphere * (torqueForce * Random.Range(1.0f, 2.0f)), ForceMode.Impulse);
+
+                debrisRigidbodies.Add(rb);
+            }
+        }
+
+        // 5. Generate remaining Outer Crust Debris
+        for (int i = 0; i < remainingOuterDebris; i++)
+        {
+            float y = 1f - (i / (float)(remainingOuterDebris - 1)) * 2f; 
             float r = Mathf.Sqrt(1f - y * y); 
             float goldenAngle = Mathf.PI * (3f - Mathf.Sqrt(5f));
             float theta = goldenAngle * i;
@@ -266,7 +395,7 @@ public class PlanetBlaster : MonoBehaviour
             debrisObjects.Add(piece);
         }
 
-        // Generate Inner Glowing Core Debris (using Blast material)
+        // 6. Generate Inner Glowing Core Debris
         for (int i = 0; i < numInnerDebris; i++)
         {
             float y = 1f - (i / (float)(numInnerDebris - 1)) * 2f;
@@ -303,42 +432,14 @@ public class PlanetBlaster : MonoBehaviour
             debrisObjects.Add(piece);
         }
 
-        // 7. Start the sequence timeline
-        StartCoroutine(DetonationSequence(
-            innerLight, 
-            fireball, 
-            debrisRigidbodies, 
-            debrisObjects, 
-            lightGo, 
-            fireball, 
-            debrisContainer, 
-            rayGameObjects, 
-            rayTargetScales, 
-            rayRotSpeeds, 
-            rayInstances, 
-            rayContainer));
-    }
-
-    private IEnumerator DetonationSequence(
-        Light innerLight, 
-        GameObject fireball, 
-        List<Rigidbody> debrisRbs, 
-        List<GameObject> debrisObjs,
-        GameObject lightGo,
-        GameObject fireballGo,
-        GameObject debrisContainerGo,
-        List<GameObject> rayGos,
-        List<Vector3> rayTargetScales,
-        List<float> rayRotSpeeds,
-        List<Material> rayMats,
-        GameObject rayContainerGo)
-    {
+        // ==========================================
+        // STAGE 3: Settle Phase, Fading, and Physics Cleanup
+        // ==========================================
         float elapsed = 0f;
         float peakTime = blastDuration * 0.25f; // Reach peak size/glow at 25% duration
 
-        // Capture starting colors of ray materials
         List<Color> rayStartColors = new List<Color>();
-        foreach (var mat in rayMats)
+        foreach (var mat in rayInstances)
         {
             if (mat != null && mat.HasProperty("_Color"))
             {
@@ -355,32 +456,31 @@ public class PlanetBlaster : MonoBehaviour
             elapsed += Time.deltaTime;
             float progress = elapsed / blastDuration;
 
-            // A. Handle lighting and fireball expansion
             if (elapsed < peakTime)
             {
                 float t = elapsed / peakTime;
                 
-                // Point Light swelling
+                // Point Light swelling rapidly to max
                 if (innerLight != null)
                 {
-                    innerLight.intensity = Mathf.Lerp(0f, maxLightIntensity, t);
-                    innerLight.range = Mathf.Lerp(0f, maxLightRange, t);
+                    innerLight.intensity = Mathf.Lerp(maxLightIntensity * 0.25f, maxLightIntensity, t);
+                    innerLight.range = Mathf.Lerp(maxLightRange * 0.5f, maxLightRange, t);
                 }
                 
-                // Fireball swelling
+                // Fireball swelling rapidly
                 if (fireball != null)
                 {
                     float currentScale = Mathf.Lerp(0f, planetRadius * 2.4f, t);
                     fireball.transform.localScale = new Vector3(currentScale, currentScale, currentScale);
                 }
 
-                // Ray beams shooting outwards rapidly!
-                for (int i = 0; i < rayGos.Count; i++)
+                // Ray beams shooting outwards at maximum speed!
+                for (int i = 0; i < rayGameObjects.Count; i++)
                 {
-                    if (rayGos[i] != null)
+                    if (rayGameObjects[i] != null)
                     {
-                        // Interpolate scale from 0 to target size
-                        rayGos[i].transform.localScale = Vector3.Lerp(Vector3.zero, rayTargetScales[i], t);
+                        Vector3 currentMinScale = rayTargetScales[i] * 0.35f;
+                        rayGameObjects[i].transform.localScale = Vector3.Lerp(currentMinScale, rayTargetScales[i], t);
                     }
                 }
             }
@@ -403,7 +503,7 @@ public class PlanetBlaster : MonoBehaviour
                 }
 
                 // Debris damping increase to slow them down smoothly before freeze
-                foreach (var rb in debrisRbs)
+                foreach (var rb in debrisRigidbodies)
                 {
                     if (rb != null)
                     {
@@ -413,40 +513,37 @@ public class PlanetBlaster : MonoBehaviour
                 }
 
                 // Ray beams slowly fading out and extending slightly further
-                for (int i = 0; i < rayGos.Count; i++)
+                for (int i = 0; i < rayGameObjects.Count; i++)
                 {
-                    if (rayGos[i] != null)
+                    if (rayGameObjects[i] != null)
                     {
-                        // Gently continue growing slightly during fadeout
-                        rayGos[i].transform.localScale = Vector3.Lerp(rayTargetScales[i], rayTargetScales[i] * 1.15f, t);
+                        rayGameObjects[i].transform.localScale = Vector3.Lerp(rayTargetScales[i], rayTargetScales[i] * 1.15f, t);
 
-                        // Fade the instantiated material color to 0
-                        if (i < rayMats.Count && rayMats[i] != null)
+                        if (i < rayInstances.Count && rayInstances[i] != null)
                         {
                             Color currentColor = Color.Lerp(rayStartColors[i], Color.clear, t);
-                            rayMats[i].SetColor("_Color", currentColor);
+                            rayInstances[i].SetColor("_Color", currentColor);
                         }
                     }
                 }
             }
 
             // Continuous ray spin rotation around local Y-axis for shimmer effect
-            for (int i = 0; i < rayGos.Count; i++)
+            for (int i = 0; i < rayGameObjects.Count; i++)
             {
-                if (rayGos[i] != null)
+                if (rayGameObjects[i] != null)
                 {
-                    rayGos[i].transform.Rotate(Vector3.up, rayRotSpeeds[i] * Time.deltaTime, Space.Self);
+                    rayGameObjects[i].transform.Rotate(Vector3.up, rayRotSpeeds[i] * Time.deltaTime, Space.Self);
                 }
             }
 
             yield return null;
         }
 
-        // B. Clean up physics completely ("after, there will be no physics")
         Debug.Log("[PlanetBlaster] Settle phase complete. Disabling physics on all debris.");
 
         // Clean up ray materials to prevent memory leak
-        foreach (var mat in rayMats)
+        foreach (var mat in rayInstances)
         {
             if (mat != null) Destroy(mat);
         }
@@ -456,7 +553,7 @@ public class PlanetBlaster : MonoBehaviour
         float shrinkDuration = 1.5f;
         List<Vector3> startScales = new List<Vector3>();
 
-        foreach (var go in debrisObjs)
+        foreach (var go in debrisObjects)
         {
             if (go != null)
             {
@@ -479,11 +576,11 @@ public class PlanetBlaster : MonoBehaviour
             shrinkElapsed += Time.deltaTime;
             float t = shrinkElapsed / shrinkDuration;
 
-            for (int i = 0; i < debrisObjs.Count; i++)
+            for (int i = 0; i < debrisObjects.Count; i++)
             {
-                if (debrisObjs[i] != null)
+                if (debrisObjects[i] != null)
                 {
-                    debrisObjs[i].transform.localScale = Vector3.Lerp(startScales[i], Vector3.zero, t);
+                    debrisObjects[i].transform.localScale = Vector3.Lerp(startScales[i], Vector3.zero, t);
                 }
             }
 
@@ -492,9 +589,9 @@ public class PlanetBlaster : MonoBehaviour
 
         // Final cleanup of GameObjects
         if (lightGo != null) Destroy(lightGo);
-        if (fireballGo != null) Destroy(fireballGo);
-        if (rayContainerGo != null) Destroy(rayContainerGo);
-        if (debrisContainerGo != null) Destroy(debrisContainerGo);
+        if (fireball != null) Destroy(fireball);
+        if (rayContainer != null) Destroy(rayContainer);
+        if (debrisContainer != null) Destroy(debrisContainer);
 
         Debug.Log("[PlanetBlaster] Planet detonation sequence fully complete. All debris and rays cleared.");
     }

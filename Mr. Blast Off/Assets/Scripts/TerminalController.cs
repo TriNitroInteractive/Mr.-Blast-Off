@@ -29,6 +29,8 @@ public class TerminalController : MonoBehaviour
 
     private void Update()
     {
+        if (Time.timeScale == 0f) return;
+
         if (hasTriggered)
         {
             if (promptUI != null && promptUI.activeSelf)

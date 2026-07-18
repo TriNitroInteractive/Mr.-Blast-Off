@@ -32,14 +32,12 @@ Shader "Custom/URPAdditiveRay"
             {
                 float4 positionOS   : POSITION;
                 float2 uv           : TEXCOORD0;
-                float4 color        : COLOR; // For per-particle or per-instance tinting / fading
             };
 
             struct Varyings
             {
                 float4 positionCS   : SV_POSITION;
                 float2 uv           : TEXCOORD0;
-                float4 color        : COLOR;
             };
 
             float4 _Color;
@@ -50,7 +48,6 @@ Shader "Custom/URPAdditiveRay"
                 Varyings output;
                 output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
                 output.uv = input.uv;
-                output.color = input.color;
                 return output;
             }
 
@@ -68,7 +65,7 @@ Shader "Custom/URPAdditiveRay"
                 float finalAlpha = edgeFade * lengthFade;
 
                 // Return additive HDR color
-                return _Color * input.color * finalAlpha;
+                return _Color * finalAlpha;
             }
             ENDHLSL
         }
