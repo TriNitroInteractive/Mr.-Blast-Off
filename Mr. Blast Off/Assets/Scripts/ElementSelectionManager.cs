@@ -35,9 +35,17 @@ public class ElementSelectionManager : MonoBehaviour
 
     private void Awake()
     {
-        // 1. Pause game immediately on load
-        Time.timeScale = 0f;
-        Debug.Log("[ElementSelectionManager] Game PAUSED for Element Selection phase.");
+        // 1. Pause game on load if in the Kickoff scene (for backward compatibility), otherwise keep running
+        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Kickoff")
+        {
+            Time.timeScale = 0f;
+            Debug.Log("[ElementSelectionManager] Game PAUSED for Element Selection phase.");
+        }
+        else
+        {
+            Time.timeScale = 1f;
+            Debug.Log("[ElementSelectionManager] Preparation Menu loaded. Time scale initialized to 1.");
+        }
 
         panelRect = GetComponent<RectTransform>();
         CreateGridContainer();
@@ -253,33 +261,42 @@ public class ElementSelectionManager : MonoBehaviour
 
             Debug.Log($"[ElementSelectionManager] Core elements stabilized: {string.Join(", ", SelectedElements)}");
 
-            // Register selected elements with the GameManager to compute reaction points
-            if (GameManager.Instance != null)
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Preparation")
             {
-                GameManager.Instance.InitializeSelectedPoints(SelectedElements);
+                // Transition to Kickoff scene
+                Time.timeScale = 1f;
+                UnityEngine.SceneManagement.SceneManager.LoadScene("Kickoff");
             }
             else
             {
-                Debug.LogWarning("[ElementSelectionManager] GameManager.Instance is null! Reactivity calculation might be bypassed.");
-            }
+                // Initialize and show the playtime Inventory Bar with selected elements (for fallback/development play from Kickoff scene)
+                InventoryBarManager invBar = Object.FindAnyObjectByType<InventoryBarManager>(FindObjectsInactive.Include);
+                if (invBar != null)
+                {
+                    invBar.InitializeInventory(SelectedElements);
+                }
+                else
+                {
+                    Debug.LogWarning("[ElementSelectionManager] InventoryBarManager not found in scene!");
+                }
 
-            // Initialize and show the playtime Inventory Bar with selected elements
-            InventoryBarManager invBar = Object.FindAnyObjectByType<InventoryBarManager>(FindObjectsInactive.Include);
-            if (invBar != null)
-            {
-                invBar.InitializeInventory(SelectedElements);
-            }
-            else
-            {
-                Debug.LogWarning("[ElementSelectionManager] InventoryBarManager not found in scene!");
-            }
+                // Register selected elements with the GameManager to compute reaction points
+                if (GameManager.Instance != null)
+                {
+                    GameManager.Instance.InitializeSelectedPoints(SelectedElements);
+                }
+                else
+                {
+                    Debug.LogWarning("[ElementSelectionManager] GameManager.Instance is null! Reactivity calculation might be bypassed.");
+                }
 
-            // 2. Unpause and start the game!
-            Time.timeScale = 1f;
-            Debug.Log("[ElementSelectionManager] Game unpaused! Let the engineering cleanup begin.");
+                // 2. Unpause and start the game!
+                Time.timeScale = 1f;
+                Debug.Log("[ElementSelectionManager] Game unpaused! Let the engineering cleanup begin.");
 
-            // 3. Deactivate the Element Selection Panel
-            gameObject.SetActive(false);
+                // 3. Deactivate the Element Selection Panel
+                gameObject.SetActive(false);
+            }
         }
         else
         {

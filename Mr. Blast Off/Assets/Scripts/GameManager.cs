@@ -18,6 +18,15 @@ public class GameManager : MonoBehaviour
     [Tooltip("Optional custom material for player debris. If null, a red/orange glowing procedural color is used.")]
     public Material debrisMaterial;
 
+    [Header("Cockpit Persistent States")]
+    public string selectedPlanetName = "Planet M";
+    public bool upgradeCatalyst = false;
+    public bool upgradeSupercritical = false;
+    public bool upgradeHeavyWater = false;
+    public int solacs = 150;
+    public int highScore = 0;
+    public string playerName = "Mr. Blast";
+
     public int TotalReactionPoints { get; private set; } = 0;
     public bool IsGameOver { get; private set; } = false;
 
@@ -52,6 +61,73 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name == "Kickoff")
+        {
+            InitializeGameplayState();
+        }
+    }
+
+    private void InitializeGameplayState()
+    {
+        // Clear game over state
+        IsGameOver = false;
+
+        // Set planet-specific threshold
+        if (selectedPlanetName == "Planet A") requiredPoints = 60;
+        else if (selectedPlanetName == "Planet B") requiredPoints = 90;
+        else if (selectedPlanetName == "Planet C") requiredPoints = 75;
+        else if (selectedPlanetName == "Planet D") requiredPoints = 65;
+        else requiredPoints = 80; // Default: Planet M
+
+        // If SelectedElements is empty (e.g., developer launched Kickoff scene directly), fill with 10 default elements
+        if (ElementSelectionManager.SelectedElements == null || ElementSelectionManager.SelectedElements.Count == 0)
+        {
+            Debug.LogWarning("[GameManager] SelectedElements list is empty. Populating with default high-reactivity elements for instant developer testing.");
+            ElementSelectionManager.SelectedElements = new List<string>
+            {
+                "Uranium", "Plutonium", "Tritium", "Helium-3", "Deuterium",
+                "Thorium", "Neptunium", "Radium", "Polonium", "Cesium"
+            };
+
+            // Register standard HSV colors for default elements so Inventory Bar renders beautifully
+            for (int i = 0; i < ElementSelectionManager.SelectedElements.Count; i++)
+            {
+                float hue = i / 30f;
+                Color shadeColor = Color.HSVToRGB(hue, 0.65f, 0.85f);
+                ElementSelectionManager.ElementColors[ElementSelectionManager.SelectedElements[i]] = shadeColor;
+            }
+        }
+
+        // Initialize the Inventory Bar
+        InventoryBarManager invBar = Object.FindAnyObjectByType<InventoryBarManager>(FindObjectsInactive.Include);
+        if (invBar != null)
+        {
+            invBar.InitializeInventory(ElementSelectionManager.SelectedElements);
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] InventoryBarManager not found in scene!");
+        }
+
+        // Initialize reaction points mapping
+        InitializeSelectedPoints(ElementSelectionManager.SelectedElements);
+
+        // Ensure time scale is unpaused
+        Time.timeScale = 1f;
+    }
+
     private void Update()
     {
         if (IsGameOver)
@@ -79,25 +155,35 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void InitializeSelectedPoints(List<string> selectedElements)
     {
-        TotalReactionPoints = 0;
+        int basePoints = 0;
         IsGameOver = false;
 
         foreach (string el in selectedElements)
         {
             if (ElementPoints.TryGetValue(el, out int pts))
             {
-                TotalReactionPoints += pts;
+                basePoints += pts;
                 Debug.Log($"[GameManager] Element: {el} is worth {pts} reaction points.");
             }
             else
             {
-                // Fallback if element not found in dictionary
-                TotalReactionPoints += 5;
+                basePoints += 5;
                 Debug.LogWarning($"[GameManager] Unknown element: {el}. Defaulting to 5 reaction points.");
             }
         }
 
-        Debug.Log($"[GameManager] Elements loaded. Total reactor reactivity sum: {TotalReactionPoints} / {requiredPoints} Required.");
+        // Apply Heavy-Water Moderator multiplier upgrade (+10%)
+        if (upgradeHeavyWater)
+        {
+            TotalReactionPoints = Mathf.RoundToInt(basePoints * 1.10f);
+            Debug.Log($"[GameManager] Heavy-Water Moderator active! Multiplied points: {basePoints} -> {TotalReactionPoints}");
+        }
+        else
+        {
+            TotalReactionPoints = basePoints;
+        }
+
+        Debug.Log($"[GameManager] Elements loaded. Base points: {basePoints}. Active reactor points: {TotalReactionPoints} / {requiredPoints} Required.");
     }
 
     /// <summary>
@@ -109,13 +195,38 @@ public class GameManager : MonoBehaviour
 
         Debug.Log($"[GameManager] Detonation requested! Evaluation reaction points: {TotalReactionPoints}");
 
-        if (TotalReactionPoints > requiredPoints)
+        // Adjust target required points if Super-critical Core upgrade is active (-10 threshold)
+        int currentRequired = requiredPoints;
+        if (upgradeSupercritical)
+        {
+            currentRequired = Mathf.Max(10, requiredPoints - 10);
+            Debug.Log($"[GameManager] Super-critical Core active! Lowered requirement from {requiredPoints} to {currentRequired}");
+        }
+
+        // Apply Catalyst Pre-heater upgrade (+10 points)
+        int finalReactionPoints = TotalReactionPoints;
+        if (upgradeCatalyst)
+        {
+            finalReactionPoints += 10;
+            Debug.Log($"[GameManager] Catalyst Pre-heater active! Added +10 reactor points. Total: {finalReactionPoints}");
+        }
+
+        if (finalReactionPoints > currentRequired)
         {
             // Success! Detonate the planet
             PlanetBlaster blaster = Object.FindAnyObjectByType<PlanetBlaster>();
             if (blaster != null)
             {
                 Debug.Log("[GameManager] Reaction CRITICALITY EXCEEDED! Initiating planetary destruction...");
+                
+                // Calculate and record high score on explosion
+                int finalScore = finalReactionPoints * 100;
+                if (finalScore > highScore)
+                {
+                    highScore = finalScore;
+                    Debug.Log($"[GameManager] NEW HIGH SCORE RECORDED: {highScore}");
+                }
+
                 StartCoroutine(TransitionToSecondaryCamera());
                 blaster.Detonate();
             }
