@@ -59,7 +59,7 @@ public class ShuttleController : MonoBehaviour
             GameObject planetGo = GameObject.Find(GameManager.Instance.selectedPlanetName);
             if (planetGo != null)
             {
-                float planetRadius = planetGo.transform.localScale.x * 0.5f;
+                float planetRadius = GetPlanetRadius(planetGo);
                 // Position above the planet. Let's use a safe direction like (0, 1, 0.3) normalized
                 Vector3 orbitDir = new Vector3(0f, 1f, 0.3f).normalized;
                 transform.position = planetGo.transform.position + orbitDir * (planetRadius * 1.5f);
@@ -280,13 +280,56 @@ public class ShuttleController : MonoBehaviour
                 {
                     minDist = dist;
                     bestPlanet = obj.transform;
-                    // Standard sphere mesh diameter is 1, so radius is scale.x * 0.5
-                    radius = obj.transform.localScale.x * 0.5f;
+                    radius = GetPlanetRadius(obj);
                 }
             }
         }
 
         return bestPlanet;
+    }
+
+    private float GetPlanetRadius(GameObject planetGo)
+    {
+        // 1. If there's a SphereCollider on the root, use its radius
+        var sphereCol = planetGo.GetComponent<SphereCollider>();
+        if (sphereCol != null)
+        {
+            return sphereCol.radius * planetGo.transform.localScale.x;
+        }
+
+        // 2. Otherwise, check for MeshFilter components in children
+        var meshFilters = planetGo.GetComponentsInChildren<MeshFilter>(true);
+        if (meshFilters.Length > 0)
+        {
+            float maxLocalDist = 0f;
+            foreach (var mf in meshFilters)
+            {
+                if (mf.sharedMesh == null) continue;
+                Vector3 boundsCenter = mf.sharedMesh.bounds.center;
+                Vector3 extents = mf.sharedMesh.bounds.extents;
+                Vector3[] corners = new Vector3[]
+                {
+                    boundsCenter + new Vector3(extents.x, extents.y, extents.z),
+                    boundsCenter + new Vector3(extents.x, extents.y, -extents.z),
+                    boundsCenter + new Vector3(extents.x, -extents.y, extents.z),
+                    boundsCenter + new Vector3(extents.x, -extents.y, -extents.z),
+                    boundsCenter + new Vector3(-extents.x, extents.y, extents.z),
+                    boundsCenter + new Vector3(-extents.x, extents.y, -extents.z),
+                    boundsCenter + new Vector3(-extents.x, -extents.y, extents.z),
+                    boundsCenter + new Vector3(-extents.x, -extents.y, -extents.z)
+                };
+                foreach (var corner in corners)
+                {
+                    Vector3 worldCorner = mf.transform.TransformPoint(corner);
+                    float dist = Vector3.Distance(planetGo.transform.position, worldCorner);
+                    if (dist > maxLocalDist) maxLocalDist = dist;
+                }
+            }
+            if (maxLocalDist > 0f) return maxLocalDist;
+        }
+
+        // 3. Fallback to scale-based estimation
+        return planetGo.transform.localScale.x * 0.5f;
     }
 
     private void OnGUI()

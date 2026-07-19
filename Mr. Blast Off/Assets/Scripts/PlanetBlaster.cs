@@ -53,8 +53,7 @@ public class PlanetBlaster : MonoBehaviour
 
     private void Awake()
     {
-        // Calculate radius based on sphere's local scale (standard sphere mesh diameter is 1 unit)
-        planetRadius = transform.localScale.x * 0.5f;
+        planetRadius = GetPlanetRadius(gameObject);
     }
 
     /// <summary>
@@ -600,6 +599,50 @@ public class PlanetBlaster : MonoBehaviour
         if (debrisContainer != null) Destroy(debrisContainer);
 
         Debug.Log("[PlanetBlaster] Planet detonation sequence fully complete. All debris and rays cleared.");
+    }
+
+    private float GetPlanetRadius(GameObject planetGo)
+    {
+        // 1. If there's a SphereCollider on the root, use its radius
+        var sphereCol = planetGo.GetComponent<SphereCollider>();
+        if (sphereCol != null)
+        {
+            return sphereCol.radius * planetGo.transform.localScale.x;
+        }
+
+        // 2. Otherwise, check for MeshFilter components in children
+        var meshFilters = planetGo.GetComponentsInChildren<MeshFilter>(true);
+        if (meshFilters.Length > 0)
+        {
+            float maxLocalDist = 0f;
+            foreach (var mf in meshFilters)
+            {
+                if (mf.sharedMesh == null) continue;
+                Vector3 boundsCenter = mf.sharedMesh.bounds.center;
+                Vector3 extents = mf.sharedMesh.bounds.extents;
+                Vector3[] corners = new Vector3[]
+                {
+                    boundsCenter + new Vector3(extents.x, extents.y, extents.z),
+                    boundsCenter + new Vector3(extents.x, extents.y, -extents.z),
+                    boundsCenter + new Vector3(extents.x, -extents.y, extents.z),
+                    boundsCenter + new Vector3(extents.x, -extents.y, -extents.z),
+                    boundsCenter + new Vector3(-extents.x, extents.y, extents.z),
+                    boundsCenter + new Vector3(-extents.x, extents.y, -extents.z),
+                    boundsCenter + new Vector3(-extents.x, -extents.y, extents.z),
+                    boundsCenter + new Vector3(-extents.x, -extents.y, -extents.z)
+                };
+                foreach (var corner in corners)
+                {
+                    Vector3 worldCorner = mf.transform.TransformPoint(corner);
+                    float dist = Vector3.Distance(planetGo.transform.position, worldCorner);
+                    if (dist > maxLocalDist) maxLocalDist = dist;
+                }
+            }
+            if (maxLocalDist > 0f) return maxLocalDist;
+        }
+
+        // 3. Fallback to scale-based estimation
+        return planetGo.transform.localScale.x * 0.5f;
     }
 }
 
