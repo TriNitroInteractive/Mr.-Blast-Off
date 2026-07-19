@@ -214,7 +214,21 @@ public class GameManager : MonoBehaviour
         if (finalReactionPoints > currentRequired)
         {
             // Success! Detonate the planet
-            PlanetBlaster blaster = Object.FindAnyObjectByType<PlanetBlaster>();
+            PlanetBlaster blaster = null;
+            GameObject playerObj = GameObject.Find("Mr.Blast");
+            if (playerObj != null)
+            {
+                var scc = playerObj.GetComponent<SphericalCharacterController>();
+                if (scc != null && scc.planet != null)
+                {
+                    blaster = scc.planet.GetComponent<PlanetBlaster>();
+                }
+            }
+            if (blaster == null)
+            {
+                blaster = Object.FindAnyObjectByType<PlanetBlaster>();
+            }
+
             if (blaster != null)
             {
                 Debug.Log("[GameManager] Reaction CRITICALITY EXCEEDED! Initiating planetary destruction...");

@@ -293,12 +293,18 @@ public class PlanetBlaster : MonoBehaviour
         // ==========================================
         Debug.Log("[PlanetBlaster] STAGE 2: MAXIMUM REACTOR CRITICALITY. DETONATION!");
 
-        // 1. Disable the planet's visual and collider components
-        var planetRenderer = GetComponent<MeshRenderer>();
-        if (planetRenderer != null) planetRenderer.enabled = false;
+        // 1. Disable the planet's visual and collider components in the entire hierarchy
+        var planetRenderers = GetComponentsInChildren<MeshRenderer>();
+        foreach (var r in planetRenderers)
+        {
+            r.enabled = false;
+        }
 
-        var planetCollider = GetComponent<Collider>();
-        if (planetCollider != null) planetCollider.enabled = false;
+        var planetColliders = GetComponentsInChildren<Collider>();
+        foreach (var col in planetColliders)
+        {
+            col.enabled = false;
+        }
 
         // 2. Locate and launch Mr.Blast
         GameObject playerObj = GameObject.Find("Mr.Blast");

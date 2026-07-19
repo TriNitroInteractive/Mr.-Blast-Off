@@ -17,10 +17,12 @@ public class SphericalCharacterController : MonoBehaviour
 
     private Rigidbody rb;
     private InputAction moveAction;
+    private Animator animator;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        animator = GetComponentInChildren<Animator>();
         rb.useGravity = false;
         rb.freezeRotation = true;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
@@ -58,6 +60,11 @@ public class SphericalCharacterController : MonoBehaviour
         if (moveAction != null)
         {
             input = moveAction.ReadValue<Vector2>();
+        }
+
+        if (animator != null)
+        {
+            animator.SetFloat("Speed", input.magnitude);
         }
 
         // 3. Move relative to camera forward & right projected on the sphere surface
@@ -124,5 +131,13 @@ public class SphericalCharacterController : MonoBehaviour
 
         // Combine horizontal and vertical velocities and apply to Rigidbody
         rb.linearVelocity = newHorizontalVelocity + gravityUp * currentVerticalVelocity;
+    }
+
+    private void OnDisable()
+    {
+        if (animator != null)
+        {
+            animator.SetFloat("Speed", 0f);
+        }
     }
 }
