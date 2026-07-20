@@ -106,14 +106,18 @@ public class TerminalGuidanceSystem : MonoBehaviour
         Shader unlitShader = Shader.Find("Universal Render Pipeline/Unlit");
         if (unlitShader == null) unlitShader = Shader.Find("Particles/Standard Unlit");
         if (unlitShader == null) unlitShader = Shader.Find("Sprites/Default");
+        if (unlitShader == null) unlitShader = Shader.Find("Hidden/InternalErrorShader");
 
-        _pathMaterial = new Material(unlitShader);
-        _pathMaterial.SetColor("_BaseColor", pathColor);
-        _pathMaterial.SetColor("_Color", pathColor);
+        if (unlitShader != null)
+        {
+            _pathMaterial = new Material(unlitShader);
+            _pathMaterial.SetColor("_BaseColor", pathColor);
+            _pathMaterial.SetColor("_Color", pathColor);
 
-        _runnerMaterial = new Material(unlitShader);
-        _runnerMaterial.SetColor("_BaseColor", runnerColor);
-        _runnerMaterial.SetColor("_Color", runnerColor);
+            _runnerMaterial = new Material(unlitShader);
+            _runnerMaterial.SetColor("_BaseColor", runnerColor);
+            _runnerMaterial.SetColor("_Color", runnerColor);
+        }
     }
 
     private void InitializePools()

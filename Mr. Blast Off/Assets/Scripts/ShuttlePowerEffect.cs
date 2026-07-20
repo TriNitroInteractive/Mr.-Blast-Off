@@ -32,10 +32,14 @@ public class ShuttlePowerEffect : MonoBehaviour
         MeshRenderer mr = GetComponent<MeshRenderer>();
         if (mr != null)
         {
-            // Instantiate a new Lit material so we don't modify other objects using the same material
-            glassMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            if (glassMaterial != null)
+            Shader litShader = Shader.Find("Universal Render Pipeline/Lit");
+            if (litShader == null) litShader = Shader.Find("Standard");
+            if (litShader == null) litShader = Shader.Find("Sprites/Default");
+            if (litShader == null) litShader = Shader.Find("Hidden/InternalErrorShader");
+
+            if (litShader != null)
             {
+                glassMaterial = new Material(litShader);
                 // Configure URP Transparent Lit properties
                 glassMaterial.SetFloat("_Surface", 1); // Transparent
                 glassMaterial.SetFloat("_Blend", 0);   // Alpha Blend
@@ -56,11 +60,7 @@ public class ShuttlePowerEffect : MonoBehaviour
                 glassMaterial.renderQueue = 3000; // Transparent queue
 
                 mr.sharedMaterial = glassMaterial;
-                Debug.Log("[ShuttlePowerEffect] Applied premium URP black glass material to Shuttle.");
-            }
-            else
-            {
-                Debug.LogError("[ShuttlePowerEffect] Failed to create Universal Render Pipeline/Lit material.");
+                Debug.Log("[ShuttlePowerEffect] Applied premium glassy material to Shuttle.");
             }
         }
     }
@@ -69,12 +69,13 @@ public class ShuttlePowerEffect : MonoBehaviour
     {
         // Find the "Universal Render Pipeline/Particles/Unlit" shader as per guidelines
         Shader ringShader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
-        if (ringShader == null)
-        {
-            ringShader = Shader.Find("Particles/Standard Unlit"); // Fallback if URP particle shader is missing
-        }
+        if (ringShader == null) ringShader = Shader.Find("Particles/Standard Unlit");
+        if (ringShader == null) ringShader = Shader.Find("Sprites/Default");
+        if (ringShader == null) ringShader = Shader.Find("Hidden/InternalErrorShader");
 
-        Material ringMat = new Material(ringShader);
+        if (ringShader != null)
+        {
+            Material ringMat = new Material(ringShader);
         // Enable alpha blending on particle shader
         ringMat.SetFloat("_Surface", 1);
         ringMat.SetFloat("_Blend", 0);
@@ -102,6 +103,7 @@ public class ShuttlePowerEffect : MonoBehaviour
             activeRings.Add(lr);
             // Stagger the initial start progress (e.g. 0.0, 0.33, 0.66)
             ringProgress.Add((float)i / ringCount);
+        }
         }
     }
 

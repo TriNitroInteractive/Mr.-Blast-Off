@@ -447,7 +447,7 @@ MonoBehaviour:
   m_ScaleFactor: 1
   m_ReferenceResolution: {x: 800, y: 600}
   m_ScreenMatchMode: 0
-  m_MatchWidthOrHeight: 0
+  m_MatchWidthOrHeight: 0.5
   m_PhysicalUnit: 3
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
@@ -1241,6 +1241,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ElementSelectionManager
   slotTemplate: {fileID: 1762968884}
   startButton: {fileID: 948048237}
+  generateLayoutProcedurally: 1
+  customScrollView: {fileID: 0}
+  customGridRect: {fileID: 0}
+  customStatusText: {fileID: 0}
+  scrollViewSizeDelta: {x: 360, y: 140}
+  scrollViewAnchoredPosition: {x: 0, y: 20}
+  cellSize: {x: 50, y: 50}
+  cellSpacing: {x: 12, y: 12}
+  gridColumnCount: 5
+  statusTextSizeDelta: {x: 360, y: 36}
+  statusTextAnchoredPosition: {x: 0, y: -60}
+  statusTextFontSize: 13
+  statusTextColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  startButtonSizeDelta: {x: 160, y: 30}
+  startButtonAnchoredPosition: {x: 0, y: -100}
 --- !u!1 &934626395
 GameObject:
   m_ObjectHideFlags: 0

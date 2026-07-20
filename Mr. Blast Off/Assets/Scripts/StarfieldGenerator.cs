@@ -71,20 +71,18 @@ public class StarfieldGenerator : MonoBehaviour
         
         // Find URP unlit particle shader, fallback to any unlit or default particle shader if not found
         Shader particleShader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
-        if (particleShader == null)
-        {
-            particleShader = Shader.Find("Particles/Standard Unlit");
-        }
-        if (particleShader == null)
-        {
-            particleShader = Shader.Find("Sprites/Default");
-        }
+        if (particleShader == null) particleShader = Shader.Find("Particles/Standard Unlit");
+        if (particleShader == null) particleShader = Shader.Find("Sprites/Default");
+        if (particleShader == null) particleShader = Shader.Find("Hidden/InternalErrorShader");
 
-        Material starMaterial = new Material(particleShader);
-        // Setup color and additive settings
-        starMaterial.SetColor("_BaseColor", Color.white);
-        starMaterial.SetColor("_Color", Color.white);
-        renderer.sharedMaterial = starMaterial;
+        if (particleShader != null)
+        {
+            Material starMaterial = new Material(particleShader);
+            // Setup color and additive settings
+            starMaterial.SetColor("_BaseColor", Color.white);
+            starMaterial.SetColor("_Color", Color.white);
+            renderer.sharedMaterial = starMaterial;
+        }
 
         // 4. Pre-populate particle arrays
         _stars = new ParticleSystem.Particle[starCount];

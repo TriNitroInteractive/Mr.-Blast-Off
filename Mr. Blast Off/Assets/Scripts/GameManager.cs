@@ -87,6 +87,11 @@ public class GameManager : MonoBehaviour
             if (plotController != null)
             {
                 plotController.gameObject.SetActive(true);
+                SetInstructionsVisible(false); // Fully hide instructions while plot story is running
+            }
+            else
+            {
+                SetInstructionsVisible(true);
             }
 
             var cockpit = Object.FindAnyObjectByType<CockpitManager>(FindObjectsInactive.Include);
@@ -536,11 +541,24 @@ public class GameManager : MonoBehaviour
                 else
                 {
                     // Procedural material with hot core glowing color
-                    Material mat = new Material(Shader.Find("Standard"));
-                    mat.color = Color.Lerp(Color.red, new Color(1f, 0.4f, 0f), Random.value);
-                    mat.EnableKeyword("_EMISSION");
-                    mat.SetColor("_EmissionColor", mat.color * 2f);
-                    pieceRenderer.sharedMaterial = mat;
+                    Shader debrisShader = Shader.Find("Standard");
+                    if (debrisShader == null) debrisShader = Shader.Find("Universal Render Pipeline/Lit");
+                    if (debrisShader == null) debrisShader = Shader.Find("Sprites/Default");
+                    if (debrisShader == null) debrisShader = Shader.Find("Hidden/InternalErrorShader");
+
+                    if (debrisShader != null)
+                    {
+                        Material mat = new Material(debrisShader);
+                        mat.color = Color.Lerp(Color.red, new Color(1f, 0.4f, 0f), Random.value);
+                        // Support both Standard (_EmissionColor) and URP shader properties
+                        if (debrisShader.name.Contains("Lit"))
+                        {
+                            mat.SetColor("_BaseColor", mat.color);
+                        }
+                        mat.EnableKeyword("_EMISSION");
+                        mat.SetColor("_EmissionColor", mat.color * 2f);
+                        pieceRenderer.sharedMaterial = mat;
+                    }
                 }
             }
 
@@ -748,7 +766,7 @@ public class GameManager : MonoBehaviour
             _instructionsText.text = "<b>MISSION SETUP:</b> <color=#00FFFF>Select Planet</color> to scan coordinates & <color=#FFFF00>Select Upgrades</color> to optimize core reaction!";
             
             // Hide HUD initially if LoadingPlotController is present in the scene
-            if (Object.FindAnyObjectByType<LoadingPlotController>() != null)
+            if (Object.FindAnyObjectByType<LoadingPlotController>(FindObjectsInactive.Include) != null)
             {
                 hudGo.SetActive(false);
             }

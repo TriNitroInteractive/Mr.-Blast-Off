@@ -423,19 +423,27 @@ public class CockpitManager : MonoBehaviour
         var mr = previewModel.GetComponent<MeshRenderer>();
         if (mr != null)
         {
-            Material mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            mat.SetFloat("_Surface", 1);
-            mat.SetFloat("_Blend", 0);
-            mat.SetColor("_BaseColor", new Color(0.12f, 0.12f, 0.14f, 0.45f));
-            mat.SetFloat("_Metallic", 0.95f);
-            mat.SetFloat("_Smoothness", 0.92f);
-            mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            mat.SetFloat("_ZWrite", 0);
-            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            mat.EnableKeyword("_ALPHAPREMULTIPLY_ON_OFF");
-            mat.renderQueue = 3000;
-            mr.sharedMaterial = mat;
+            Shader litShader = Shader.Find("Universal Render Pipeline/Lit");
+            if (litShader == null) litShader = Shader.Find("Standard");
+            if (litShader == null) litShader = Shader.Find("Sprites/Default");
+            if (litShader == null) litShader = Shader.Find("Hidden/InternalErrorShader");
+
+            if (litShader != null)
+            {
+                Material mat = new Material(litShader);
+                mat.SetFloat("_Surface", 1);
+                mat.SetFloat("_Blend", 0);
+                mat.SetColor("_BaseColor", new Color(0.12f, 0.12f, 0.14f, 0.45f));
+                mat.SetFloat("_Metallic", 0.95f);
+                mat.SetFloat("_Smoothness", 0.92f);
+                mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetFloat("_ZWrite", 0);
+                mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                mat.EnableKeyword("_ALPHAPREMULTIPLY_ON_OFF");
+                mat.renderQueue = 3000;
+                mr.sharedMaterial = mat;
+            }
         }
 
         // Add 2 decorative green glowing rings wrapping the preview shuttle
@@ -452,11 +460,19 @@ public class CockpitManager : MonoBehaviour
             lr.endWidth = 0.04f;
             lr.positionCount = 31;
 
-            Material ringMat = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
-            ringMat.SetFloat("_Surface", 1);
-            ringMat.SetFloat("_Blend", 0);
-            ringMat.SetColor("_BaseColor", new Color(0f, 1f, 0.2f, 1f));
-            lr.sharedMaterial = ringMat;
+            Shader ringShader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+            if (ringShader == null) ringShader = Shader.Find("Particles/Standard Unlit");
+            if (ringShader == null) ringShader = Shader.Find("Sprites/Default");
+            if (ringShader == null) ringShader = Shader.Find("Hidden/InternalErrorShader");
+
+            if (ringShader != null)
+            {
+                Material ringMat = new Material(ringShader);
+                ringMat.SetFloat("_Surface", 1);
+                ringMat.SetFloat("_Blend", 0);
+                ringMat.SetColor("_BaseColor", new Color(0f, 1f, 0.2f, 1f));
+                lr.sharedMaterial = ringMat;
+            }
 
             // Simple static offset circles
             float offset = (i == 0) ? 0.35f : -0.35f;
