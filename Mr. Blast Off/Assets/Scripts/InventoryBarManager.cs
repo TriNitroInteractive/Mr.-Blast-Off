@@ -108,28 +108,44 @@ public class InventoryBarManager : MonoBehaviour
                 }
             }
 
-            // Dynamically add a clean name label inside the slot
-            // Clear any old text child first if duplicating
+            // Dynamically add a clean name label and icon inside the slot
+            // Clear any old child first if duplicating
             for (int childIdx = slotInstance.transform.childCount - 1; childIdx >= 0; childIdx--)
             {
                 Destroy(slotInstance.transform.GetChild(childIdx).gameObject);
             }
 
+            // 1. Create and Configure Icon
+            Sprite elementSprite = Resources.Load<Sprite>($"elements/{name}");
+            GameObject iconGo = new GameObject("Icon");
+            iconGo.transform.SetParent(slotInstance.transform, false);
+            Image iconImg = iconGo.AddComponent<Image>();
+            iconImg.sprite = elementSprite;
+            iconImg.color = Color.white;
+            iconImg.preserveAspect = true;
+
+            RectTransform iconRect = iconImg.GetComponent<RectTransform>();
+            iconRect.anchorMin = new Vector2(0.1f, 0.35f); // Top 65%
+            iconRect.anchorMax = new Vector2(0.9f, 0.95f);
+            iconRect.offsetMin = Vector2.zero;
+            iconRect.offsetMax = Vector2.zero;
+
+            // 2. Create and Configure Text label
             GameObject textGo = new GameObject("Text (TMP)");
             textGo.transform.SetParent(slotInstance.transform, false);
 
             TextMeshProUGUI textMesh = textGo.AddComponent<TextMeshProUGUI>();
-            textMesh.fontSize = 9f; // Fits beautifully inside 50x50 box
+            textMesh.fontSize = 8f; // Standardized readable font size
             textMesh.alignment = TextAlignmentOptions.Center;
             textMesh.color = Color.white;
             textMesh.text = name;
             textMesh.enableWordWrapping = true;
-            textMesh.outlineWidth = 0.25f;
+            textMesh.outlineWidth = 0.2f;
             textMesh.outlineColor = Color.black;
 
             RectTransform textRect = textMesh.GetComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
+            textRect.anchorMin = new Vector2(0f, 0f); // Bottom 35%
+            textRect.anchorMax = new Vector2(1f, 0.35f);
             textRect.sizeDelta = Vector2.zero;
             textRect.offsetMin = new Vector2(2f, 2f);
             textRect.offsetMax = new Vector2(-2f, -2f);

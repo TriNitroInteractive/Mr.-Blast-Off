@@ -29,6 +29,7 @@ public class GameManager : MonoBehaviour
 
     public int TotalReactionPoints { get; private set; } = 0;
     public bool IsGameOver { get; private set; } = false;
+    public bool IsCountdownActive { get; private set; } = false;
 
     private TextMeshProUGUI restartText;
     private float flashTimer = 0f;
@@ -84,8 +85,9 @@ public class GameManager : MonoBehaviour
 
     private void InitializeGameplayState()
     {
-        // Clear game over state
+        // Clear game over and countdown state
         IsGameOver = false;
+        IsCountdownActive = false;
 
         // Set planet-specific threshold
         if (selectedPlanetName == "Planet A") requiredPoints = 60;
@@ -273,6 +275,8 @@ public class GameManager : MonoBehaviour
 
     private IEnumerator CountdownAndDetonateRoutine(PlanetBlaster blaster)
     {
+        IsCountdownActive = true;
+
         if (_countdownText != null)
         {
             _countdownText.gameObject.SetActive(true);
@@ -297,12 +301,14 @@ public class GameManager : MonoBehaviour
             _countdownText.gameObject.SetActive(false);
         }
 
+        IsCountdownActive = false;
+
         // Check if player successfully boarded the shuttle
         ShuttleController shuttle = Object.FindAnyObjectByType<ShuttleController>();
         if (shuttle != null && shuttle.isPiloted)
         {
             Debug.Log("[GameManager] Countdown reached 0. Mr.Blast is safe inside the Shuttle! Executing planetary detonation cinematic.");
-            StartCoroutine(TransitionToSecondaryCamera(blaster.transform));
+            StartCoroutine(TransitionToSecondaryCamera(blaster));
             blaster.Detonate();
         }
         else
@@ -312,8 +318,9 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private IEnumerator TransitionToSecondaryCamera(Transform targetPlanet)
+    private IEnumerator TransitionToSecondaryCamera(PlanetBlaster blaster)
     {
+        Transform targetPlanet = blaster.transform;
         GameObject secCam = GameObject.Find("SecondaryCamera");
         if (secCam == null)
         {
@@ -351,13 +358,13 @@ public class GameManager : MonoBehaviour
         Quaternion targetRot = secCam.transform.rotation;
 
         float elapsed = 0f;
-        float duration = 2.0f; // Pacing: smoothly pan over 2.0 seconds during the 3.0s buildup
+        float panDuration = 2.0f; // Pacing: smoothly pan over 2.0 seconds during the buildup
 
-        while (elapsed < duration)
+        // --- 1. Transition TO Secondary Camera ---
+        while (elapsed < panDuration)
         {
             elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / duration);
-            // Smoothstep curve for elegant acceleration and deceleration
+            float t = Mathf.Clamp01(elapsed / panDuration);
             float smoothT = t * t * (3f - 2f * t);
 
             mainCam.transform.position = Vector3.Lerp(startPos, targetPos, smoothT);
@@ -367,7 +374,55 @@ public class GameManager : MonoBehaviour
 
         mainCam.transform.position = targetPos;
         mainCam.transform.rotation = targetRot;
-        Debug.Log("[GameManager] Cinematic camera transition to SecondaryCamera complete.");
+        Debug.Log("[GameManager] Cinematic camera transition to SecondaryCamera complete. Watching explosion...");
+
+        // --- 2. Wait for Explosion Duration ---
+        // Total wait: Buildup + Blast + brief settle time
+        float totalWait = blaster.buildUpDuration + blaster.blastDuration + 1.5f;
+        yield return new WaitForSeconds(totalWait);
+
+        Debug.Log("[GameManager] Explosion sequence finished. Returning camera to player...");
+
+        // --- 3. Transition BACK to Player/Shuttle ---
+        elapsed = 0f;
+        float returnDuration = 2.5f;
+        Vector3 finalCamStartPos = mainCam.transform.position;
+        Quaternion finalCamStartRot = mainCam.transform.rotation;
+
+        while (elapsed < returnDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / returnDuration);
+            float smoothT = t * t * (3f - 2f * t);
+
+            // Dynamically calculate the target return position (handles shuttle movement during blast)
+            Vector3 returnPos;
+            Quaternion returnRot;
+
+            ShuttleController shuttle = Object.FindAnyObjectByType<ShuttleController>();
+            if (shuttle != null && shuttle.isPiloted)
+            {
+                returnPos = shuttle.transform.position - shuttle.transform.forward * shuttle.cameraDistance + shuttle.transform.up * shuttle.cameraHeight;
+                Vector3 lookTarget = shuttle.transform.position + shuttle.transform.forward * 4f;
+                returnRot = Quaternion.LookRotation(lookTarget - returnPos, shuttle.transform.up);
+            }
+            else
+            {
+                // Fallback to Mr.Blast follow (even though he's usually launched/disabled, this handles ground death etc)
+                returnPos = finalCamStartPos; // Placeholder if no valid target
+                returnRot = finalCamStartRot;
+            }
+
+            mainCam.transform.position = Vector3.Lerp(finalCamStartPos, returnPos, smoothT);
+            mainCam.transform.rotation = Quaternion.Slerp(finalCamStartRot, returnRot, smoothT);
+            yield return null;
+        }
+
+        if (followScript != null)
+        {
+            followScript.isCinematicActive = false;
+        }
+        Debug.Log("[GameManager] Cinematic camera returned to player control.");
     }
 
     private void KillPlayer(string customReason = null)

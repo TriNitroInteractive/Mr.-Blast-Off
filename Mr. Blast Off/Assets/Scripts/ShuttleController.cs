@@ -147,6 +147,9 @@ public class ShuttleController : MonoBehaviour
     {
         if (isPiloted && mainCamera != null)
         {
+            // Bypass custom shuttle camera follow if a global cinematic (like the explosion) is active
+            if (cameraFollow != null && cameraFollow.isCinematicActive) return;
+
             // Custom smooth behind-the-ship flight camera follow
             Vector3 targetCamPos = transform.position - transform.forward * cameraDistance + transform.up * cameraHeight;
             mainCamera.transform.position = Vector3.Lerp(mainCamera.transform.position, targetCamPos, cameraLerpSpeed * Time.deltaTime);
