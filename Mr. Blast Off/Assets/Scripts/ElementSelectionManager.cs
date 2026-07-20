@@ -27,11 +27,42 @@ public class ElementSelectionManager : MonoBehaviour
     [Tooltip("The Start Button already in the scene")]
     public Button startButton;
 
+    [Header("Procedural Layout Customization")]
+    public bool generateLayoutProcedurally = true;
+
+    [Header("Custom UI References (Overrides Procedural)")]
+    public GameObject customScrollView;
+    public RectTransform customGridRect;
+    public TextMeshProUGUI customStatusText;
+
+    [Header("Scroll View Settings")]
+    public Vector2 scrollViewSizeDelta = new Vector2(360f, 140f);
+    public Vector2 scrollViewAnchoredPosition = new Vector2(0f, 20f);
+
+    [Header("Grid Layout Settings")]
+    public Vector2 cellSize = new Vector2(50f, 50f);
+    public Vector2 cellSpacing = new Vector2(12f, 12f);
+    public int gridColumnCount = 5;
+
+    [Header("Status Text Settings")]
+    public Vector2 statusTextSizeDelta = new Vector2(360f, 36f);
+    public Vector2 statusTextAnchoredPosition = new Vector2(0f, -60f);
+    public float statusTextFontSize = 13f;
+    public Color statusTextColor = Color.yellow;
+
+    [Header("Start Button Settings")]
+    public Vector2 startButtonSizeDelta = new Vector2(160f, 30f);
+    public Vector2 startButtonAnchoredPosition = new Vector2(0f, -100f);
+
     private RectTransform panelRect;
     private RectTransform gridRect;
     private TextMeshProUGUI statusText;
     private List<ElementSlot> allSlots = new List<ElementSlot>();
     private List<ElementSlot> selectedSlots = new List<ElementSlot>();
+
+    private GameObject proceduralScrollView;
+    private GridLayoutGroup proceduralGridLayout;
+    private ContentSizeFitter proceduralContentSizeFitter;
 
     // 30 Sci-Fi and Nuclear Engineering Element Names
     private readonly string[] elementNames = new string[30]
@@ -62,10 +93,41 @@ public class ElementSelectionManager : MonoBehaviour
         PreloadSpritesAndDatabase();
 
         panelRect = GetComponent<RectTransform>();
-        CreateGridContainer();
-        CreateStatusText();
+
+        if (generateLayoutProcedurally)
+        {
+            CreateGridContainer();
+            CreateStatusText();
+        }
+        else
+        {
+            // Use custom overrides
+            if (customScrollView != null)
+            {
+                customScrollView.SetActive(true);
+            }
+            if (customGridRect != null)
+            {
+                gridRect = customGridRect;
+            }
+            else
+            {
+                CreateGridContainer();
+            }
+
+            if (customStatusText != null)
+            {
+                statusText = customStatusText;
+            }
+            else
+            {
+                CreateStatusText();
+            }
+        }
+
         GenerateSlots();
         ConfigureStartButton();
+        ApplyLayoutParameters();
         UpdateStatusDisplay();
     }
 
@@ -152,14 +214,15 @@ public class ElementSelectionManager : MonoBehaviour
     {
         // 1. Create the Scroll View Container Game Object
         GameObject scrollViewGo = new GameObject("ScrollView");
+        proceduralScrollView = scrollViewGo;
         scrollViewGo.transform.SetParent(transform, false);
 
         RectTransform scrollRectTransform = scrollViewGo.AddComponent<RectTransform>();
         scrollRectTransform.anchorMin = new Vector2(0.5f, 0.5f);
         scrollRectTransform.anchorMax = new Vector2(0.5f, 0.5f);
         scrollRectTransform.pivot = new Vector2(0.5f, 0.5f);
-        scrollRectTransform.anchoredPosition = new Vector2(0f, 20f);
-        scrollRectTransform.sizeDelta = new Vector2(360f, 140f);
+        scrollRectTransform.anchoredPosition = scrollViewAnchoredPosition;
+        scrollRectTransform.sizeDelta = scrollViewSizeDelta;
 
         ScrollRect scrollRect = scrollViewGo.AddComponent<ScrollRect>();
         scrollRect.horizontal = false;
@@ -193,16 +256,16 @@ public class ElementSelectionManager : MonoBehaviour
         gridRect.sizeDelta = new Vector2(0f, 0f);
 
         // Add GridLayoutGroup
-        GridLayoutGroup gridLayout = gridGo.AddComponent<GridLayoutGroup>();
-        gridLayout.cellSize = new Vector2(50f, 50f); // Preserve original template slot size
-        gridLayout.spacing = new Vector2(12f, 12f);
-        gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-        gridLayout.constraintCount = 5; // Fit exactly 5 columns nicely in 360 width
-        gridLayout.childAlignment = TextAnchor.UpperCenter;
+        proceduralGridLayout = gridGo.AddComponent<GridLayoutGroup>();
+        proceduralGridLayout.cellSize = cellSize; // Preserve original template slot size
+        proceduralGridLayout.spacing = cellSpacing;
+        proceduralGridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        proceduralGridLayout.constraintCount = gridColumnCount; // Fit exactly 5 columns nicely in 360 width
+        proceduralGridLayout.childAlignment = TextAnchor.UpperCenter;
 
         // Add ContentSizeFitter to dynamically expand content height vertically based on slots
-        ContentSizeFitter fitter = gridGo.AddComponent<ContentSizeFitter>();
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        proceduralContentSizeFitter = gridGo.AddComponent<ContentSizeFitter>();
+        proceduralContentSizeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
         // Link the ScrollRect properties
         scrollRect.content = gridRect;
@@ -218,15 +281,88 @@ public class ElementSelectionManager : MonoBehaviour
         textRect.anchorMin = new Vector2(0.5f, 0.5f);
         textRect.anchorMax = new Vector2(0.5f, 0.5f);
         textRect.pivot = new Vector2(0.5f, 0.5f);
-        textRect.anchoredPosition = new Vector2(0f, -60f);
-        textRect.sizeDelta = new Vector2(360f, 36f);
+        textRect.anchoredPosition = statusTextAnchoredPosition;
+        textRect.sizeDelta = statusTextSizeDelta;
 
         statusText = textGo.AddComponent<TextMeshProUGUI>();
-        statusText.fontSize = 13f;
+        statusText.fontSize = statusTextFontSize;
         statusText.alignment = TextAlignmentOptions.Center;
-        statusText.color = Color.yellow;
+        statusText.color = statusTextColor;
         statusText.text = "Selected elements: 0 / 10";
     }
+
+    public void ApplyLayoutParameters()
+    {
+        // 1. Scroll View Layout
+        GameObject sView = generateLayoutProcedurally ? proceduralScrollView : customScrollView;
+        if (sView != null)
+        {
+            RectTransform sViewRect = sView.GetComponent<RectTransform>();
+            if (sViewRect != null)
+            {
+                sViewRect.anchorMin = new Vector2(0.5f, 0.5f);
+                sViewRect.anchorMax = new Vector2(0.5f, 0.5f);
+                sViewRect.pivot = new Vector2(0.5f, 0.5f);
+                sViewRect.anchoredPosition = scrollViewAnchoredPosition;
+                sViewRect.sizeDelta = scrollViewSizeDelta;
+            }
+        }
+
+        // 2. Grid Layout properties
+        var gridLayout = gridRect != null ? gridRect.GetComponent<GridLayoutGroup>() : null;
+        if (gridLayout != null)
+        {
+            gridLayout.cellSize = cellSize;
+            gridLayout.spacing = cellSpacing;
+            gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            gridLayout.constraintCount = gridColumnCount;
+        }
+
+        // 3. Status Text Layout & Styling
+        if (statusText != null)
+        {
+            RectTransform statusRect = statusText.GetComponent<RectTransform>();
+            if (statusRect != null)
+            {
+                statusRect.anchorMin = new Vector2(0.5f, 0.5f);
+                statusRect.anchorMax = new Vector2(0.5f, 0.5f);
+                statusRect.pivot = new Vector2(0.5f, 0.5f);
+                statusRect.anchoredPosition = statusTextAnchoredPosition;
+                statusRect.sizeDelta = statusTextSizeDelta;
+            }
+            statusText.fontSize = statusTextFontSize;
+            statusText.color = statusTextColor;
+        }
+
+        // 4. Start Button Layout
+        if (startButton != null)
+        {
+            RectTransform startRect = startButton.GetComponent<RectTransform>();
+            if (startRect != null)
+            {
+                startRect.anchorMin = new Vector2(0.5f, 0.5f);
+                startRect.anchorMax = new Vector2(0.5f, 0.5f);
+                startRect.pivot = new Vector2(0.5f, 0.5f);
+                startRect.anchoredPosition = startButtonAnchoredPosition;
+                startRect.sizeDelta = startButtonSizeDelta;
+            }
+        }
+    }
+
+    private void OnEnable()
+    {
+        ApplyLayoutParameters();
+    }
+
+#if UNITY_EDITOR
+    private void Update()
+    {
+        if (Application.isPlaying)
+        {
+            ApplyLayoutParameters();
+        }
+    }
+#endif
 
     private void GenerateSlots()
     {

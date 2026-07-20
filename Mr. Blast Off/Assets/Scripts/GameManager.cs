@@ -80,6 +80,28 @@ public class GameManager : MonoBehaviour
     {
         CreateInstructionsUI(scene.name);
 
+        if (scene.name == "Preparation")
+        {
+            // Initial Panel State Correction: ensure perfect panel starting states regardless of Editor-time setup.
+            var plotController = Object.FindAnyObjectByType<LoadingPlotController>(FindObjectsInactive.Include);
+            if (plotController != null)
+            {
+                plotController.gameObject.SetActive(true);
+            }
+
+            var cockpit = Object.FindAnyObjectByType<CockpitManager>(FindObjectsInactive.Include);
+            if (cockpit != null)
+            {
+                cockpit.gameObject.SetActive(false);
+            }
+
+            var selection = Object.FindAnyObjectByType<ElementSelectionManager>(FindObjectsInactive.Include);
+            if (selection != null)
+            {
+                selection.gameObject.SetActive(false);
+            }
+        }
+
         if (scene.name == "Kickoff")
         {
             InitializeGameplayState();
@@ -653,6 +675,28 @@ public class GameManager : MonoBehaviour
     }
 
     private TextMeshProUGUI _instructionsText;
+    private GameObject _instructionsHUD;
+
+    public void SetInstructionsVisible(bool visible)
+    {
+        if (_instructionsHUD == null)
+        {
+            GameObject canvas = GameObject.Find("Canvas");
+            if (canvas != null)
+            {
+                Transform hudTrans = canvas.transform.Find("GameplayInstructionsHUD");
+                if (hudTrans != null)
+                {
+                    _instructionsHUD = hudTrans.gameObject;
+                }
+            }
+        }
+
+        if (_instructionsHUD != null)
+        {
+            _instructionsHUD.SetActive(visible);
+        }
+    }
 
     private void CreateInstructionsUI(string sceneName)
     {
@@ -666,6 +710,7 @@ public class GameManager : MonoBehaviour
         if (canvas == null) return;
 
         GameObject hudGo = new GameObject("GameplayInstructionsHUD");
+        _instructionsHUD = hudGo;
         hudGo.transform.SetParent(canvas.transform, false);
 
         RectTransform rect = hudGo.AddComponent<RectTransform>();
@@ -701,6 +746,12 @@ public class GameManager : MonoBehaviour
         if (sceneName == "Preparation")
         {
             _instructionsText.text = "<b>MISSION SETUP:</b> <color=#00FFFF>Select Planet</color> to scan coordinates & <color=#FFFF00>Select Upgrades</color> to optimize core reaction!";
+            
+            // Hide HUD initially if LoadingPlotController is present in the scene
+            if (Object.FindAnyObjectByType<LoadingPlotController>() != null)
+            {
+                hudGo.SetActive(false);
+            }
         }
         else if (sceneName == "Kickoff")
         {

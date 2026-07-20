@@ -187,6 +187,12 @@ public class LoadingPlotController : MonoBehaviour
         {
             cockpitPanel.SetActive(true);
             
+            // Show GameplayInstructionsHUD along with cockpit workspace
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.SetInstructionsVisible(true);
+            }
+
             // To ensure CockpitManager or any other start sequences behave correctly,
             // we broadcast or force refresh UI if necessary
             CockpitManager cockpitManager = cockpitPanel.GetComponent<CockpitManager>();
