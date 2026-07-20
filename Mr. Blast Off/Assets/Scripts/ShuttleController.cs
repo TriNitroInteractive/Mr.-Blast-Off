@@ -270,7 +270,7 @@ public class ShuttleController : MonoBehaviour
         float minDist = float.MaxValue;
 
         // Find all root/non-root objects that represent planets
-        var allObjects = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include);
+        var allObjects = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (var obj in allObjects)
         {
             if (obj.name.StartsWith("Planet"))
