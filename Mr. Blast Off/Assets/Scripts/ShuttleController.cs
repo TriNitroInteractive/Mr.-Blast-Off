@@ -147,8 +147,8 @@ public class ShuttleController : MonoBehaviour
     {
         if (isPiloted && mainCamera != null)
         {
-            // Bypass custom shuttle camera follow if a global cinematic (like the explosion) is active
-            if (cameraFollow != null && cameraFollow.isCinematicActive) return;
+            // Bypass custom shuttle camera follow if a global explosion cinematic is active
+            if (GameManager.Instance != null && GameManager.Instance.IsExplosionCinematicActive) return;
 
             // Custom smooth behind-the-ship flight camera follow
             Vector3 targetCamPos = transform.position - transform.forward * cameraDistance + transform.up * cameraHeight;
@@ -210,10 +210,9 @@ public class ShuttleController : MonoBehaviour
         // Deactivate player character safely
         playerObj.SetActive(false);
 
-        // Pause standard camera spherical following
-        if (cameraFollow != null)
+        if (GameManager.Instance != null && GameManager.Instance.IsCountdownActive)
         {
-            cameraFollow.isCinematicActive = true;
+            GameManager.Instance.UpdateInstructions("<b>ORBITAL ESCAPE:</b> Pilot the Shuttle away from the planet into safe space orbit!");
         }
 
         Debug.Log("[ShuttleController] Mr.Blast entered the Shuttle! Commencing space flight.");
@@ -257,10 +256,9 @@ public class ShuttleController : MonoBehaviour
             playerObj.SetActive(true);
         }
 
-        // Restore standard camera spherical following
-        if (cameraFollow != null)
+        if (GameManager.Instance != null && GameManager.Instance.IsCountdownActive)
         {
-            cameraFollow.isCinematicActive = false;
+            GameManager.Instance.UpdateInstructions("<b>CRITICAL CORE DETONATION:</b> Return to the <color=#FF5500>Shuttle [F]</color> and escape immediately!");
         }
 
         Debug.Log("[ShuttleController] Mr.Blast exited the Shuttle.");

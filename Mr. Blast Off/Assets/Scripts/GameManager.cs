@@ -30,6 +30,7 @@ public class GameManager : MonoBehaviour
     public int TotalReactionPoints { get; private set; } = 0;
     public bool IsGameOver { get; private set; } = false;
     public bool IsCountdownActive { get; private set; } = false;
+    public bool IsExplosionCinematicActive { get; set; } = false;
 
     private TextMeshProUGUI restartText;
     private float flashTimer = 0f;
@@ -77,6 +78,8 @@ public class GameManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        CreateInstructionsUI(scene.name);
+
         if (scene.name == "Kickoff")
         {
             InitializeGameplayState();
@@ -276,6 +279,7 @@ public class GameManager : MonoBehaviour
     private IEnumerator CountdownAndDetonateRoutine(PlanetBlaster blaster)
     {
         IsCountdownActive = true;
+        UpdateInstructions("<b>CRITICAL CORE DETONATION:</b> Return to the <color=#FF5500>Shuttle [F]</color> and escape immediately!");
 
         if (_countdownText != null)
         {
@@ -320,6 +324,9 @@ public class GameManager : MonoBehaviour
 
     private IEnumerator TransitionToSecondaryCamera(PlanetBlaster blaster)
     {
+        IsExplosionCinematicActive = true;
+        UpdateInstructions("<b>ORBITAL COLLAPSE:</b> Reactor core detonating! Watch planetary vaporization...");
+
         Transform targetPlanet = blaster.transform;
         GameObject secCam = GameObject.Find("SecondaryCamera");
         if (secCam == null)
@@ -331,11 +338,13 @@ public class GameManager : MonoBehaviour
         // Dynamically position and orient the secondary camera based on the detonating planet
         if (targetPlanet != null)
         {
-            float targetDistance = targetPlanet.localScale.x * 2.01f;
+            float radius = GetPlanetRadius(targetPlanet.gameObject);
+            // Position camera well outside the planet visual bounds (3.2x actual radius is ideal)
+            float targetDistance = radius * 3.2f;
             secCam.transform.position = targetPlanet.position + Vector3.back * targetDistance;
             secCam.transform.rotation = Quaternion.LookRotation(Vector3.forward, Vector3.up);
-            Debug.LogFormat("[GameManager] Dynamically aligned SecondaryCamera relative to detonating planet '{0}' (Pos: {1}, Distance: {2})", 
-                targetPlanet.name, secCam.transform.position, targetDistance);
+            Debug.LogFormat("[GameManager] Dynamically aligned SecondaryCamera relative to detonating planet '{0}' (Pos: {1}, Distance: {2}, Calculated Radius: {3})", 
+                targetPlanet.name, secCam.transform.position, targetDistance, radius);
         }
 
         var mainCam = Camera.main;
@@ -422,6 +431,8 @@ public class GameManager : MonoBehaviour
         {
             followScript.isCinematicActive = false;
         }
+        IsExplosionCinematicActive = false;
+        UpdateInstructions("<b>CLEANUP COMPLETE:</b> Target planet successfully vaporized! Pilot the Shuttle into orbit.");
         Debug.Log("[GameManager] Cinematic camera returned to player control.");
     }
 
@@ -639,5 +650,110 @@ public class GameManager : MonoBehaviour
 
         // Reload the current active scene
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
+    private TextMeshProUGUI _instructionsText;
+
+    private void CreateInstructionsUI(string sceneName)
+    {
+        GameObject existing = GameObject.Find("GameplayInstructionsHUD");
+        if (existing != null)
+        {
+            Destroy(existing);
+        }
+
+        GameObject canvas = GameObject.Find("Canvas");
+        if (canvas == null) return;
+
+        GameObject hudGo = new GameObject("GameplayInstructionsHUD");
+        hudGo.transform.SetParent(canvas.transform, false);
+
+        RectTransform rect = hudGo.AddComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 1f);
+        rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.pivot = new Vector2(0.5f, 1f);
+        rect.anchoredPosition = new Vector2(0f, -15f);
+        rect.sizeDelta = new Vector2(620f, 32f);
+
+        Image img = hudGo.AddComponent<Image>();
+        img.color = new Color(0.04f, 0.04f, 0.06f, 0.88f);
+
+        Outline outline = hudGo.AddComponent<Outline>();
+        outline.effectColor = new Color(0f, 0.85f, 1f, 0.5f);
+        outline.effectDistance = new Vector2(1.5f, -1.5f);
+
+        GameObject textGo = new GameObject("InstructionText");
+        textGo.transform.SetParent(hudGo.transform, false);
+
+        RectTransform textRect = textGo.AddComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.sizeDelta = Vector2.zero;
+        textRect.offsetMin = new Vector2(8f, 2f);
+        textRect.offsetMax = new Vector2(-8f, -2f);
+
+        _instructionsText = textGo.AddComponent<TextMeshProUGUI>();
+        _instructionsText.fontSize = 11.5f;
+        _instructionsText.alignment = TextAlignmentOptions.Center;
+        _instructionsText.color = Color.white;
+        _instructionsText.textWrappingMode = TextWrappingModes.Normal;
+
+        if (sceneName == "Preparation")
+        {
+            _instructionsText.text = "<b>MISSION SETUP:</b> <color=#00FFFF>Select Planet</color> to scan coordinates & <color=#FFFF00>Select Upgrades</color> to optimize core reaction!";
+        }
+        else if (sceneName == "Kickoff")
+        {
+            _instructionsText.text = "<b>MISSION HAZARD:</b> Locate and interact with the <color=#00FFFF>Control Terminal [F]</color> to prime core reaction!";
+        }
+    }
+
+    public void UpdateInstructions(string text)
+    {
+        if (_instructionsText != null)
+        {
+            _instructionsText.text = text;
+        }
+    }
+
+    private float GetPlanetRadius(GameObject planetGo)
+    {
+        var sphereCol = planetGo.GetComponent<SphereCollider>();
+        if (sphereCol != null)
+        {
+            return sphereCol.radius * planetGo.transform.localScale.x;
+        }
+
+        var meshFilters = planetGo.GetComponentsInChildren<MeshFilter>(true);
+        if (meshFilters.Length > 0)
+        {
+            float maxLocalDist = 0f;
+            foreach (var mf in meshFilters)
+            {
+                if (mf.sharedMesh == null) continue;
+                Vector3 boundsCenter = mf.sharedMesh.bounds.center;
+                Vector3 extents = mf.sharedMesh.bounds.extents;
+                Vector3[] corners = new Vector3[]
+                {
+                    boundsCenter + new Vector3(extents.x, extents.y, extents.z),
+                    boundsCenter + new Vector3(extents.x, extents.y, -extents.z),
+                    boundsCenter + new Vector3(extents.x, -extents.y, extents.z),
+                    boundsCenter + new Vector3(extents.x, -extents.y, -extents.z),
+                    boundsCenter + new Vector3(-extents.x, extents.y, extents.z),
+                    boundsCenter + new Vector3(-extents.x, extents.y, -extents.z),
+                    boundsCenter + new Vector3(-extents.x, -extents.y, extents.z),
+                    boundsCenter + new Vector3(-extents.x, -extents.y, -extents.z)
+                };
+                foreach (var corner in corners)
+                {
+                    Vector3 worldCorner = mf.transform.TransformPoint(corner);
+                    float dist = Vector3.Distance(planetGo.transform.position, worldCorner);
+                    if (dist > maxLocalDist) maxLocalDist = dist;
+                }
+            }
+            if (maxLocalDist > 0f) return maxLocalDist;
+        }
+
+        return planetGo.transform.localScale.x * 0.5f;
     }
 }

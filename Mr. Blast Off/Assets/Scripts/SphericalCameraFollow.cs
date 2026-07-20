@@ -75,6 +75,7 @@ public class SphericalCameraFollow : MonoBehaviour
     {
         if (isCinematicActive) return;
         if (target == null || planet == null) return;
+        if (!target.gameObject.activeInHierarchy) return;
 
         // Calculate gravity direction at the player's position
         Vector3 gravityUp = (target.position - planet.position).normalized;

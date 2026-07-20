@@ -115,8 +115,16 @@ public class InventoryBarManager : MonoBehaviour
                 Destroy(slotInstance.transform.GetChild(childIdx).gameObject);
             }
 
-            // 1. Create and Configure Icon
-            Sprite elementSprite = Resources.Load<Sprite>($"elements/{name}");
+            // 1. Create and Configure Icon (cached dictionary fallback)
+            Sprite elementSprite = null;
+            if (ElementSelectionManager.ElementSprites != null && ElementSelectionManager.ElementSprites.TryGetValue(name, out Sprite cachedSprite))
+            {
+                elementSprite = cachedSprite;
+            }
+            else
+            {
+                elementSprite = Resources.Load<Sprite>($"elements/{name}");
+            }
             GameObject iconGo = new GameObject("Icon");
             iconGo.transform.SetParent(slotInstance.transform, false);
             Image iconImg = iconGo.AddComponent<Image>();

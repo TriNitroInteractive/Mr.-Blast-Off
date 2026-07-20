@@ -485,6 +485,7 @@ public class CockpitManager : MonoBehaviour
         {
             GameManager.Instance.selectedPlanetName = planetName;
             Debug.Log($"[CockpitManager] Target destination locked: '{planetName}'");
+            GameManager.Instance.UpdateInstructions("<b>STABILIZE CORE:</b> Select exactly <color=#FFFF00>10 elements</color> to balance reactor yield, then click <color=#00FF66>Start</color>!");
         }
 
         // Deactivate Cockpit panel and activate Element Selection panel
