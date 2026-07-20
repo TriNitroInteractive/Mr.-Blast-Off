@@ -47,22 +47,22 @@ public class MainMenuController : MonoBehaviour
                 playButton.gameObject.AddComponent<UIButtonJuice>();
             }
 
-            // Setup or find the fire particle ignition effect on the Play button
-            UIFireParticleEffect fireEffect = playButton.gameObject.GetComponent<UIFireParticleEffect>();
-            if (fireEffect == null)
+            // Setup or find the holographic fade-out effect on the Play button
+            UIHolographicEffect holoEffect = playButton.gameObject.GetComponent<UIHolographicEffect>();
+            if (holoEffect == null)
             {
-                fireEffect = playButton.gameObject.AddComponent<UIFireParticleEffect>();
+                holoEffect = playButton.gameObject.AddComponent<UIHolographicEffect>();
             }
 
-            // Hook up the button click event to trigger the ignition
+            // Hook up the button click event to trigger the hologram de-materialization
             playButton.onClick.AddListener(() =>
             {
                 // Disable button interactions once clicked to prevent double launches
                 playButton.interactable = false;
                 if (quitButton != null) quitButton.interactable = false;
 
-                // Start the fire ignition sequence!
-                fireEffect.StartIgnitionEffect();
+                // Start the holographic fade-out sequence!
+                holoEffect.StartHolographicTransition();
             });
         }
         else

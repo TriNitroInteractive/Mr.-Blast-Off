@@ -23,15 +23,15 @@ The UI screens use uGUI with ScreenSpaceOverlay rendering.
 
 # Key Asset & Context
 ### Existing Assets & Scenes
-- `Assets/Scenes/MainMenu.unity`: Needs a Main Menu manager to handle play/quit actions, link the "Play" button to a 5-second ignition/fire effect, and transition to the `Preparation` scene.
+- `Assets/Scenes/MainMenu.unity`: Needs a Main Menu manager to handle play/quit actions, link the "Play" button to a holographic fade-out effect, and transition to the `Preparation` scene.
 - `Assets/Scenes/Kickoff.unity`: Contains a Canvas with Pause Button, Pause Menu Panel (which contains Resume and Main Menu buttons). Needs a manager to handle pausing, unpausing, and scene transitioning.
 - `Assets/Sprites/Button Background.png`: Background sprite used for UI buttons.
 
 ### New Scripts
 1. `Assets/Scripts/UIButtonJuice.cs`: Reusable component attached to buttons to provide animated hover scaling, pointer-down squish, and pointer-up spring-back. Works under unscaled time.
-2. `Assets/Scripts/MainMenuController.cs`: Dynamically hooks up `Play` and `Quit` buttons. Manages the 5-second "on fire" transition for the `Play` button before loading `Preparation`.
+2. `Assets/Scripts/MainMenuController.cs`: Dynamically hooks up `Play` and `Quit` buttons. Manages the holographic fade-out transition for the `Play` button before loading `Preparation`.
 3. `Assets/Scripts/PauseMenuController.cs`: Dynamically hooks up `Pause Button`, `Resume` button, and `Main Menu` button in the `Kickoff` scene. Manages pause panel visibility and time scaling.
-4. `Assets/Scripts/UIFireParticleEffect.cs`: Procedural C#-based UI Particle emitter attached to the `Play` button that spawns glowing flame images (circles/triangles) rising upward, pulsing, scaling, and fading out across yellow, orange, and red plasma spectrums. Includes procedurally increasing screenshake for the button during ignition.
+4. `Assets/Scripts/UIHolographicEffect.cs`: Procedural C#-based holographic projection effect attached to the `Play` button. When clicked, it changes the button's visual elements to a neon holographic style (tinted cyan/teal), adds subtle scanlines/flicker glitches, and slowly dissolves/fades it out over 3-5 seconds.
 
 ---
 
@@ -43,12 +43,11 @@ The UI screens use uGUI with ScreenSpaceOverlay rendering.
 - **Dependencies**: None
 - **Parallelizable**: Yes
 
-### Step 2: Create Procedural C# UI Fire Particle Effect
-- **Description**: Implement `UIFireParticleEffect.cs`. When triggered, it will:
-  - Generate a glowing backing image (soft glow) behind the button that expands and pulses.
-  - Spawn small procedurally animated UI Images (flame shapes using standard white square/circle sprite or a custom colored glow sprite) as children of the button.
-  - Animate these particles: random horizontal offset, floating upwards (using sine/cosine waves), scaling down to 0, and fading over their lifetime (starting bright yellow/white, shifting to hot orange, deep plasma red, then transparent).
-  - Vibrate the button's position (`localPostion`) using a screenshake formula whose intensity ramps up from 0 to maximum over 5 seconds.
+### Step 2: Create Procedural C# UI Holographic Effect
+- **Description**: Implement `UIHolographicEffect.cs`. When triggered, it will:
+  - Transition the button's background image and text color to a sci-fi holographic tint (e.g. electric cyan or neon green).
+  - Simulate a holographic projection: apply high-frequency flickering (random subtle alpha fluctuations) and rapid positional micro-jitters to mimic a sci-fi holographic transmission.
+  - Implement rising horizontal scanlines (animated overlay image or overlay lines) and slow fade-out of the button elements (alpha decreases from 1.0 to 0.0) over a configurable duration (e.g., 3 seconds).
 - **Assigned role**: developer
 - **Dependencies**: None
 - **Parallelizable**: Yes
@@ -56,7 +55,7 @@ The UI screens use uGUI with ScreenSpaceOverlay rendering.
 ### Step 3: Implement Main Menu Controller
 - **Description**: Implement `MainMenuController.cs` which dynamically finds the `Play` and `Quit` button components in `MainMenu` scene, registers listeners:
   - `Quit` button calls `Application.Quit()`.
-  - `Play` button disables further clicks, triggers the `UIFireParticleEffect` and button shake, and after 5 seconds calls `SceneManager.LoadScene("Preparation")`.
+  - `Play` button disables further clicks, triggers the `UIHolographicEffect`, and after the effect completes, calls `SceneManager.LoadScene("Preparation")`.
 - **Assigned role**: developer
 - **Dependencies**: Step 2
 - **Parallelizable**: No
@@ -91,9 +90,9 @@ The UI screens use uGUI with ScreenSpaceOverlay rendering.
    - Click Resume. Verify gameplay resumes and the menu closes.
    - Click Main Menu. Verify the game returns to `MainMenu` scene.
    - Press Escape / P key to verify keyboard toggle of the pause menu.
-3. **Ignition/Fire Effect Verification**:
+3. **Holographic Effect Verification**:
    - In `MainMenu` scene, click Play.
-   - Verify button becomes unclickable.
-   - Verify a beautiful rising plasma flame/fire particle stream spawns procedurally.
-   - Verify the button begins to vibrate/shake, with vibration intensity ramping up to a climax over 5 seconds.
-   - Verify scene transition to `Preparation` happens exactly after 5 seconds.
+   - Verify button becomes unclickable and transforms into a neon cyan/teal holographic look.
+   - Verify subtle flicker/glitch movements and alpha oscillations occur, simulating a sci-fi projector.
+   - Verify scanlines/dissolve fades the button to 100% transparency over the transition duration.
+   - Verify scene transition to `Preparation` happens smoothly after the button disappears.

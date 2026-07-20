@@ -19,6 +19,35 @@ public class CockpitManager : MonoBehaviour
     public Transform planetsContainer;
     public GameObject planetSlotTemplate;
 
+    [System.Serializable]
+    public struct PlanetSpriteConfig
+    {
+        public string planetName;
+        public Sprite planetSprite;
+    }
+
+    [Header("Planet Sprite Settings")]
+    public List<PlanetSpriteConfig> planetSprites = new List<PlanetSpriteConfig>();
+
+    [Header("Designer UI Customization")]
+    [Tooltip("Custom font asset for the Preparation scene text elements.")]
+    public TMP_FontAsset customFont;
+
+    [Tooltip("Force bold styling on text elements.")]
+    public bool forceBold = true;
+
+    [Tooltip("The base text color. Defaults to dark charcoal for maximum contrast.")]
+    public Color textBaseColor = new Color(0.12f, 0.12f, 0.15f, 1f);
+
+    [Tooltip("Scale size delta of the planet icons in the list.")]
+    public Vector2 planetIconScale = new Vector2(36f, 36f);
+
+    [Tooltip("Position offset of the planet icon from the left center of the slot.")]
+    public Vector2 planetIconPosition = new Vector2(22f, 0f);
+
+    [Tooltip("The padding/offset inside the slot when the planet icon is present.")]
+    public float textLeftOffset = 44f;
+
     [Header("Reactor Section")]
     public Transform reactorContainer;
     public GameObject reactorSlotTemplate;
@@ -178,7 +207,7 @@ public class CockpitManager : MonoBehaviour
             var bgImg = slotInstance.GetComponent<Image>();
             if (bgImg != null)
             {
-                bgImg.color = new Color(data.themeColor.r, data.themeColor.g, data.themeColor.b, 0.35f);
+                bgImg.color = new Color(data.themeColor.r, data.themeColor.g, data.themeColor.b, 0.2f); // 20% opacity background for premium glow
             }
 
             // Dynamic clean labels (clear children if any duplicate first)
@@ -187,19 +216,65 @@ public class CockpitManager : MonoBehaviour
                 Destroy(slotInstance.transform.GetChild(c).gameObject);
             }
 
+            // Try to find the planet's sprite
+            Sprite planetSprite = null;
+            if (planetSprites != null)
+            {
+                foreach (var config in planetSprites)
+                {
+                    if (config.planetName == data.name)
+                    {
+                        planetSprite = config.planetSprite;
+                        break;
+                    }
+                }
+            }
+
+            // If sprite is found, create the icon on the left
+            if (planetSprite != null)
+            {
+                GameObject iconGo = new GameObject("PlanetIcon");
+                iconGo.transform.SetParent(slotInstance.transform, false);
+                
+                var iconRect = iconGo.AddComponent<RectTransform>();
+                iconRect.anchorMin = new Vector2(0f, 0.5f);
+                iconRect.anchorMax = new Vector2(0f, 0.5f);
+                iconRect.pivot = new Vector2(0.5f, 0.5f);
+                iconRect.sizeDelta = planetIconScale;
+                iconRect.anchoredPosition = planetIconPosition;
+
+                var iconImg = iconGo.AddComponent<Image>();
+                iconImg.sprite = planetSprite;
+                iconImg.raycastTarget = false; // Optimize raycasts
+            }
+
             // Add Text
             GameObject textGo = new GameObject("PlanetText");
             textGo.transform.SetParent(slotInstance.transform, false);
             var textRect = textGo.AddComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.sizeDelta = Vector2.zero;
-
+            
             var label = textGo.AddComponent<TextMeshProUGUI>();
-            label.fontSize = 10f;
-            label.alignment = TextAlignmentOptions.Center;
-            label.color = Color.white;
+            label.fontSize = 8.5f;
             label.text = $"<b>{data.displayName}</b>\nReq: {data.threshold} pts";
+            ApplyCustomTextSettings(label);
+
+            if (planetSprite != null)
+            {
+                // Align text elegantly to the right of the planet icon
+                textRect.anchorMin = Vector2.zero;
+                textRect.anchorMax = Vector2.one;
+                textRect.offsetMin = new Vector2(textLeftOffset, 0f);
+                textRect.offsetMax = new Vector2(-4f, 0f);
+                label.alignment = TextAlignmentOptions.MidlineLeft;
+            }
+            else
+            {
+                // Fallback to centered if no sprite is assigned
+                textRect.anchorMin = Vector2.zero;
+                textRect.anchorMax = Vector2.one;
+                textRect.sizeDelta = Vector2.zero;
+                label.alignment = TextAlignmentOptions.Center;
+            }
 
             // Click response via Button component
             var btn = slotInstance.GetComponent<Button>();
@@ -289,10 +364,9 @@ public class CockpitManager : MonoBehaviour
             var label = textGo.AddComponent<TextMeshProUGUI>();
             label.fontSize = 8f;
             label.alignment = TextAlignmentOptions.Center;
-            label.color = Color.white;
-
             string costString = isUnlocked ? "<color=green>ACTIVE</color>" : $"<color=yellow>{data.cost} Solacs</color>";
             label.text = $"<b>{data.name}</b>\n{data.description}\n{costString}";
+            ApplyCustomTextSettings(label);
         }
     }
 
@@ -450,9 +524,21 @@ public class CockpitManager : MonoBehaviour
     {
         if (GameManager.Instance == null) return;
 
-        if (solacsText != null) solacsText.text = $"Solacs Collected: <color=yellow>{GameManager.Instance.solacs}</color>";
-        if (nameText != null) nameText.text = $"Engineer Profile: <color=green>{GameManager.Instance.playerName}</color>";
-        if (scoreText != null) scoreText.text = $"Max Cleanup Score: <color=cyan>{GameManager.Instance.highScore}</color> pts";
+        if (solacsText != null)
+        {
+            solacsText.text = $"Solacs Collected: <color=yellow>{GameManager.Instance.solacs}</color>";
+            ApplyCustomTextSettings(solacsText);
+        }
+        if (nameText != null)
+        {
+            nameText.text = $"Engineer Profile: <color=green>{GameManager.Instance.playerName}</color>";
+            ApplyCustomTextSettings(nameText);
+        }
+        if (scoreText != null)
+        {
+            scoreText.text = $"Max Cleanup Score: <color=cyan>{GameManager.Instance.highScore}</color> pts";
+            ApplyCustomTextSettings(scoreText);
+        }
 
         if (levelText != null)
         {
@@ -468,7 +554,28 @@ public class CockpitManager : MonoBehaviour
             if (activeCount == 3) rankStr = "MK IV (Master Reactor Cruiser)";
 
             levelText.text = $"Shuttle Frame: <color=yellow>{rankStr}</color>";
+            ApplyCustomTextSettings(levelText);
         }
+    }
+
+    /// <summary>
+    /// Programmatically style TextMeshPro text components based on exposed designer options.
+    /// </summary>
+    public void ApplyCustomTextSettings(TextMeshProUGUI textComp)
+    {
+        if (textComp == null) return;
+
+        if (customFont != null)
+        {
+            textComp.font = customFont;
+        }
+
+        if (forceBold)
+        {
+            textComp.fontStyle = FontStyles.Bold;
+        }
+
+        textComp.color = textBaseColor;
     }
 
     private IEnumerator FlashTextRed(TextMeshProUGUI text)

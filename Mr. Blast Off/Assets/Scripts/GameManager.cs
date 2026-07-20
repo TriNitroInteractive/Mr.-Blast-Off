@@ -33,6 +33,9 @@ public class GameManager : MonoBehaviour
     private TextMeshProUGUI restartText;
     private float flashTimer = 0f;
 
+    private TextMeshProUGUI _countdownText;
+    private string _deathReasonMessage = "";
+
     // Reactivity points mapping for the 30 scientific/nuclear elements (scale 1-10)
     private static readonly Dictionary<string, int> ElementPoints = new Dictionary<string, int>
     {
@@ -123,6 +126,18 @@ public class GameManager : MonoBehaviour
 
         // Initialize reaction points mapping
         InitializeSelectedPoints(ElementSelectionManager.SelectedElements);
+
+        // Find the Count Down text dynamically
+        GameObject cdGo = GameObject.Find("Count Down");
+        if (cdGo != null)
+        {
+            _countdownText = cdGo.GetComponent<TextMeshProUGUI>();
+            if (_countdownText != null)
+            {
+                _countdownText.text = "";
+                _countdownText.gameObject.SetActive(false);
+            }
+        }
 
         // Ensure time scale is unpaused
         Time.timeScale = 1f;
@@ -231,7 +246,7 @@ public class GameManager : MonoBehaviour
 
             if (blaster != null)
             {
-                Debug.Log("[GameManager] Reaction CRITICALITY EXCEEDED! Initiating planetary destruction...");
+                Debug.Log("[GameManager] Reaction CRITICALITY EXCEEDED! Initiating 10-second escape countdown...");
                 
                 // Calculate and record high score on explosion
                 int finalScore = finalReactionPoints * 100;
@@ -241,8 +256,7 @@ public class GameManager : MonoBehaviour
                     Debug.Log($"[GameManager] NEW HIGH SCORE RECORDED: {highScore}");
                 }
 
-                StartCoroutine(TransitionToSecondaryCamera());
-                blaster.Detonate();
+                StartCoroutine(CountdownAndDetonateRoutine(blaster));
             }
             else
             {
@@ -257,13 +271,64 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private IEnumerator TransitionToSecondaryCamera()
+    private IEnumerator CountdownAndDetonateRoutine(PlanetBlaster blaster)
+    {
+        if (_countdownText != null)
+        {
+            _countdownText.gameObject.SetActive(true);
+        }
+
+        int countdownSecs = 10;
+        while (countdownSecs > 0)
+        {
+            if (_countdownText != null)
+            {
+                _countdownText.text = $"<color=red>T-MINUS {countdownSecs}</color>";
+            }
+            Debug.LogFormat("[GameManager] Detonation Countdown: T-MINUS {0}", countdownSecs);
+
+            yield return new WaitForSeconds(1.0f);
+            countdownSecs--;
+        }
+
+        if (_countdownText != null)
+        {
+            _countdownText.text = "";
+            _countdownText.gameObject.SetActive(false);
+        }
+
+        // Check if player successfully boarded the shuttle
+        ShuttleController shuttle = Object.FindAnyObjectByType<ShuttleController>();
+        if (shuttle != null && shuttle.isPiloted)
+        {
+            Debug.Log("[GameManager] Countdown reached 0. Mr.Blast is safe inside the Shuttle! Executing planetary detonation cinematic.");
+            StartCoroutine(TransitionToSecondaryCamera(blaster.transform));
+            blaster.Detonate();
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] Countdown reached 0. Mr.Blast failed to board the shuttle in time!");
+            KillPlayer("T-MINUS ZERO REACHED!\nYou failed to board the shuttle and escape the planet before detonation!");
+        }
+    }
+
+    private IEnumerator TransitionToSecondaryCamera(Transform targetPlanet)
     {
         GameObject secCam = GameObject.Find("SecondaryCamera");
         if (secCam == null)
         {
             Debug.LogWarning("[GameManager] SecondaryCamera not found in scene! Camera transition bypassed.");
             yield break;
+        }
+
+        // Dynamically position and orient the secondary camera based on the detonating planet
+        if (targetPlanet != null)
+        {
+            float targetDistance = targetPlanet.localScale.x * 2.01f;
+            secCam.transform.position = targetPlanet.position + Vector3.back * targetDistance;
+            secCam.transform.rotation = Quaternion.LookRotation(Vector3.forward, Vector3.up);
+            Debug.LogFormat("[GameManager] Dynamically aligned SecondaryCamera relative to detonating planet '{0}' (Pos: {1}, Distance: {2})", 
+                targetPlanet.name, secCam.transform.position, targetDistance);
         }
 
         var mainCam = Camera.main;
@@ -305,9 +370,18 @@ public class GameManager : MonoBehaviour
         Debug.Log("[GameManager] Cinematic camera transition to SecondaryCamera complete.");
     }
 
-    private void KillPlayer()
+    private void KillPlayer(string customReason = null)
     {
         IsGameOver = true;
+
+        if (string.IsNullOrEmpty(customReason))
+        {
+            _deathReasonMessage = $"Reactor Yield: <color=yellow>{TotalReactionPoints}</color> / {requiredPoints} Required\n\nReactivity was insufficient to trigger planetary detonation.\nThe core backfired, vaporizing Mr. Blast immediately!";
+        }
+        else
+        {
+            _deathReasonMessage = customReason;
+        }
 
         GameObject playerObj = GameObject.Find("Mr.Blast");
         if (playerObj == null)
@@ -479,7 +553,7 @@ public class GameManager : MonoBehaviour
         var descRect = descGo.AddComponent<RectTransform>();
         descRect.sizeDelta = new Vector2(600f, 120f);
         var descText = descGo.AddComponent<TextMeshProUGUI>();
-        descText.text = $"Reactor Yield: <color=yellow>{TotalReactionPoints}</color> / {requiredPoints} Required\n\nReactivity was insufficient to trigger planetary detonation.\nThe core backfired, vaporizing Mr. Blast immediately!";
+        descText.text = _deathReasonMessage;
         descText.color = Color.white;
         descText.fontSize = 17f;
         descText.alignment = TextAlignmentOptions.Center;

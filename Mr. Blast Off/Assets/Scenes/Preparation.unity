@@ -178,8 +178,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: New Text
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: ad9e398e5dc1af84e8927d7285683e3d, type: 2}
+  m_sharedMaterial: {fileID: -2924403990236154617, guid: ad9e398e5dc1af84e8927d7285683e3d, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -333,7 +333,6 @@ Canvas:
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
   m_VertexColorAlwaysGammaSpace: 0
-  m_UseReflectionProbes: 0
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
@@ -794,8 +793,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: New Text
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: ad9e398e5dc1af84e8927d7285683e3d, type: 2}
+  m_sharedMaterial: {fileID: -2924403990236154617, guid: ad9e398e5dc1af84e8927d7285683e3d, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1023,8 +1022,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: New Text
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: ad9e398e5dc1af84e8927d7285683e3d, type: 2}
+  m_sharedMaterial: {fileID: -2924403990236154617, guid: ad9e398e5dc1af84e8927d7285683e3d, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1248,7 +1247,7 @@ Light:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1170374649}
   m_Enabled: 1
-  serializedVersion: 13
+  serializedVersion: 12
   m_Type: 1
   m_Color: {r: 1, g: 0.95686275, b: 0.8392157, a: 1}
   m_Intensity: 1
@@ -1300,7 +1299,7 @@ Light:
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
   m_ForceVisible: 0
-  m_ShapeRadius: 0.025
+  m_ShadowRadius: 0
   m_ShadowAngle: 0
   m_LightUnit: 1
   m_LuxAtDistance: 1
@@ -1408,8 +1407,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: New Text
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: ad9e398e5dc1af84e8927d7285683e3d, type: 2}
+  m_sharedMaterial: {fileID: -2924403990236154617, guid: ad9e398e5dc1af84e8927d7285683e3d, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1843,8 +1842,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Start
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: ad9e398e5dc1af84e8927d7285683e3d, type: 2}
+  m_sharedMaterial: {fileID: -2924403990236154617, guid: ad9e398e5dc1af84e8927d7285683e3d, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -2023,6 +2022,23 @@ MonoBehaviour:
   scoreText: {fileID: 934626397}
   planetsContainer: {fileID: 757463037}
   planetSlotTemplate: {fileID: 750492458}
+  planetSprites:
+  - planetName: Planet M
+    planetSprite: {fileID: 21300000, guid: ba1decf66226b6a48b321dff59261d44, type: 3}
+  - planetName: Planet A
+    planetSprite: {fileID: 21300000, guid: e48c56f3e971a1442955f0d0fabd65bf, type: 3}
+  - planetName: Planet B
+    planetSprite: {fileID: 21300000, guid: 1612317b4bb22d943abc83286ab6c0fa, type: 3}
+  - planetName: Planet C
+    planetSprite: {fileID: 21300000, guid: 1ac599edc3d26d74092acee281954ee9, type: 3}
+  - planetName: Planet D
+    planetSprite: {fileID: 21300000, guid: 2b2c341aea74fa74aae5c7d96e0b7931, type: 3}
+  customFont: {fileID: 11400000, guid: ad9e398e5dc1af84e8927d7285683e3d, type: 2}
+  forceBold: 1
+  textBaseColor: {r: 0.12, g: 0.12, b: 0.15, a: 1}
+  planetIconScale: {x: 36, y: 36}
+  planetIconPosition: {x: 22, y: 0}
+  textLeftOffset: 44
   reactorContainer: {fileID: 1618132661}
   reactorSlotTemplate: {fileID: 1966402485}
   shuttlePreviewContainer: {fileID: 1407864503}
